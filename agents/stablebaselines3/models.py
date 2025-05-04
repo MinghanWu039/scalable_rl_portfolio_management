@@ -130,9 +130,13 @@ class DRLAgent:
         # state_memory=[] #add memory pool to store states
 
         test_env.reset()
-        max_steps = len(environment.df.index.unique()) - 1
+        try:
+            max_steps = len(environment.episode_length)
+        except:
+            print('No episode_length attribute found, using index unique instead.')
+            max_steps = len(environment.df.index.unique())
 
-        for i in range(len(environment.df.index.unique())):
+        for i in range(max_steps):
             action, _states = model.predict(test_obs, deterministic=deterministic)
             # account_memory = test_env.env_method(method_name="save_asset_memory")
             # actions_memory = test_env.env_method(method_name="save_action_memory")

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import pandas as pd
 import yfinance as yf
+from curl_cffi import requests
 
 
 class YahooDownloader:
@@ -32,6 +33,7 @@ class YahooDownloader:
         self.start_date = start_date
         self.end_date = end_date
         self.ticker_list = ticker_list
+        self.session = requests.Session(impersonate="chrome")
 
     def fetch_data(self, proxy=None, auto_adjust=False) -> pd.DataFrame:
         """Fetches data from Yahoo API
@@ -54,6 +56,7 @@ class YahooDownloader:
                 end=self.end_date,
                 proxy=proxy,
                 auto_adjust=auto_adjust,
+                session=self.session
             )
             if temp_df.columns.nlevels != 1:
                 temp_df.columns = temp_df.columns.droplevel(1)

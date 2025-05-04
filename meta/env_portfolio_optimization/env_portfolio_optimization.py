@@ -235,26 +235,26 @@ class PortfolioOptimizationEnv(gym.Env):
             )
             metrics_df.set_index("date", inplace=True)
 
-            plt.plot(metrics_df["portfolio_values"], "r")
-            plt.title("Portfolio Value Over Time")
-            plt.xlabel("Time")
-            plt.ylabel("Portfolio value")
-            plt.savefig(self._results_file / "portfolio_value.png")
-            plt.close()
+            # plt.plot(metrics_df["portfolio_values"], "r")
+            # plt.title("Portfolio Value Over Time")
+            # plt.xlabel("Time")
+            # plt.ylabel("Portfolio value")
+            # plt.savefig(self._results_file / "portfolio_value.png")
+            # plt.close()
 
-            plt.plot(self._portfolio_reward_memory, "r")
-            plt.title("Reward Over Time")
-            plt.xlabel("Time")
-            plt.ylabel("Reward")
-            plt.savefig(self._results_file / "reward.png")
-            plt.close()
+            # plt.plot(self._portfolio_reward_memory, "r")
+            # plt.title("Reward Over Time")
+            # plt.xlabel("Time")
+            # plt.ylabel("Reward")
+            # plt.savefig(self._results_file / "reward.png")
+            # plt.close()
 
-            plt.plot(self._actions_memory)
-            plt.title("Actions performed")
-            plt.xlabel("Time")
-            plt.ylabel("Weight")
-            plt.savefig(self._results_file / "actions.png")
-            plt.close()
+            # plt.plot(self._actions_memory)
+            # plt.title("Actions performed")
+            # plt.xlabel("Time")
+            # plt.ylabel("Weight")
+            # plt.savefig(self._results_file / "actions.png")
+            # plt.close()
 
             print("=================================")
             print("Initial portfolio value:{}".format(self._asset_memory["final"][0]))
@@ -272,11 +272,11 @@ class PortfolioOptimizationEnv(gym.Env):
             print("Sharpe ratio: {}".format(qs.stats.sharpe(metrics_df["returns"])))
             print("=================================")
 
-            qs.plots.snapshot(
-                metrics_df["returns"],
-                show=False,
-                savefig=self._results_file / "portfolio_summary.png",
-            )
+            # qs.plots.snapshot(
+            #     metrics_df["returns"],
+            #     show=False,
+            #     savefig=self._results_file / "portfolio_summary.png",
+            # )
 
             if self._new_gym_api:
                 return self._state, self._reward, self._terminal, False, self._info
@@ -323,6 +323,9 @@ class PortfolioOptimizationEnv(gym.Env):
                 mu = 1 - 2 * self._comission_fee_pct + self._comission_fee_pct**2
                 while abs(mu - last_mu) > 1e-10:
                     last_mu = mu
+                    if len(weights.shape) > 1:
+                        assert len(weights.shape) == 2 and weights.shape[0] == 1
+                        weights = weights[0]
                     mu = (
                         1
                         - self._comission_fee_pct * weights[0]
@@ -473,6 +476,14 @@ class PortfolioOptimizationEnv(gym.Env):
             Observation of current simulation step.
         """
         return self._state
+    
+    def get_portfolio_value(self):
+        """Returns the current portfolio value."""
+        return self._portfolio_value
+    
+    def get_date(self):
+        """Returns the current date."""
+        return self._date_memory[-1].strftime("%Y-%m-%d")
 
     def _softmax_normalization(self, actions):
         """Normalizes the action vector using softmax function.
