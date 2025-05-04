@@ -150,3 +150,19 @@ examples/trained_models
 
 # vscode
 /.vscode
+
+# macOS files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Icon files
+Icon?
+._*
+
+# Thumbnails
+._.DS_Store
+
+# Files that might appear on external disk
+.Spotlight-V100
+.Trashes
