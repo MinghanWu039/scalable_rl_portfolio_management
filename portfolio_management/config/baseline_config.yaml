@@ -1,0 +1,8 @@
+train_start_date: '2009-01-01'
+train_end_date: '2020-07-01'
+test_start_date: '2020-08-01'
+test_end_date: '2021-10-01'
+initial_amount: 1000000
+reward_scaling: 1e-4
+timesteps: 100000
+
