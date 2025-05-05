@@ -4,31 +4,6 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
-from finrl.meta.preprocessor.yahoodownloader import YahooDownloader
-
-market_tics = {
-    "S&P 500": "^GSPC",
-    "DJIA": "^DJI",
-    "NASDAQ": "^IXIC"
-}
-
-
-
-def get_market_df(start, end, market = "S&P 500"):
-    assert market in market_tics, f"market `{market}` not avaliable"
-    market_tic = market_tics[market]
-    df_market = YahooDownloader(start_date = start,
-                                end_date = end,
-                                ticker_list = [market_tic]).fetch_data()
-    
-    return df_market
-
-def get_rf_rate(start, end, tic="^IRX"):
-    df = YahooDownloader(start_date = start,
-                         end_date = end,
-                         ticker_list = [tic]).fetch_data()
-    df['rf_rate'] = df['close'] / 100.0
-    return df[['date', 'rf_rate']]
 
 def construct_stock_features(df, df_market, df_rf) -> pd.DataFrame:
     # pepare market dataframe
@@ -94,8 +69,8 @@ def construct_stock_features(df, df_market, df_rf) -> pd.DataFrame:
 
 def cluster_tic(
     df,
-    min_cluster_size=50,
-    n_clusters=None,
+    n_clusters,
+    min_cluster_size,
     n_components=2,
     random_state=42
 ) -> list:
@@ -118,8 +93,6 @@ def cluster_tic(
     X_pca = PCA(n_components=n_components, random_state=random_state).fit_transform(X_std)
     
     # 初始 KMeans
-    if n_clusters is None:
-        n_clusters = int(np.ceil(df.shape[0] / min_cluster_size))
     km = KMeans(n_clusters=n_clusters, random_state=random_state)
     labels = km.fit_predict(X_pca)
     centers = km.cluster_centers_
