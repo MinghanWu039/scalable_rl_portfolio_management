@@ -6,3 +6,13 @@ initial_amount: 1000000
 reward_scaling: 1e-4
 timesteps: 100000
 
+model:
+  learning_rate: 0.0001
+  buffer_size: 100000
+  learning_starts: 1000
+  train_freq: 1
+  gradient_steps: 1
+  ent_coef: "auto"
+  target_update_interval: 1
+  gamma: 0.99
+  tau: 0.005
