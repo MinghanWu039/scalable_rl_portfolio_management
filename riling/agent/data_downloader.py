@@ -36,7 +36,7 @@ def short_name_sha256(s: str, length: int = 16) -> str:
     return h[:length]
 
 def get_data(tics, start, end, market_tic, rf_tic):
-    tics_data_file = Path("data") / f"{short_name_sha256('_'.join(tics))}_data.csv"
+    tics_data_file = Path("data") / f"{short_name_sha256('_'.join(tics))}_{start}_{end}.csv"
     if tics_data_file.is_file():
         tics_df = pd.read_csv(tics_data_file) 
     else: 
@@ -47,14 +47,14 @@ def get_data(tics, start, end, market_tic, rf_tic):
         ).fetch_data()
         tics_df.to_csv(tics_data_file, index=False)
     
-    market_data_file = Path("data") / f"{market_tic}_data.csv"
+    market_data_file = Path("data") / f"{market_tic}_{start}_{end}.csv"
     if market_data_file.is_file():
         market_df = pd.read_csv(market_data_file) 
     else:
         market_df = get_market_df(start, end, market_tic)
         market_df.to_csv(market_data_file, index=False)
 
-    rf_data_file = Path("data") / f"{rf_tic}.csv"
+    rf_data_file = Path("data") / f"{rf_tic}_{start}_{end}.csv"
     if rf_data_file.is_file():
         rf_df = pd.read_csv(rf_data_file) 
     else:
