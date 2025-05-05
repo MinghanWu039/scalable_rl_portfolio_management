@@ -10,10 +10,10 @@ import inspect
 import importlib
 
 sys.path.append("/home/miw039/scalable_rl_portfolio_management/FinRL-dev")
-import finrl.meta.env_portfolio_optimization.env_portfolio_optimization
-importlib.reload(finrl.meta.env_portfolio_optimization.env_portfolio_optimization)
-# import finrl.agents.stablebaselines3.models
-# importlib.reload(finrl.agents.stablebaselines3.models)
+# import finrl.meta.env_portfolio_optimization.env_portfolio_optimization
+# importlib.reload(finrl.meta.env_portfolio_optimization.env_portfolio_optimization)
+import finrl.agents.stablebaselines3.models
+importlib.reload(finrl.agents.stablebaselines3.models)
 
 from finrl.meta.preprocessor.yahoodownloader import YahooDownloader
 from finrl.meta.env_portfolio_optimization.env_portfolio_optimization import PortfolioOptimizationEnv
@@ -22,6 +22,7 @@ from finrl.agents.stablebaselines3.models import DRLAgent
 
 from finrl.plot import backtest_stats, backtest_plot, get_daily_return, get_baseline
 from stable_baselines3.common.logger import configure
+from stable_baselines3.common.callbacks import CheckpointCallback
 from finrl.config import INDICATORS
 from finrl import config_tickers
 
@@ -81,7 +82,7 @@ def backtesting(env_test, model):
     baseline_stats = pd.DataFrame(baseline_stats)
 
     merged = model_stats.merge(baseline_stats, left_index=True, right_index=True, suffixes=('_model', '_baseline'))
-    merged.to_csv(f'backtest_{now}.csv')
+    merged.to_csv(f'backtests/backtest_{now}.csv')
     print(f'backtesting stats saved to backtest_{now}.csv')
 
 if __name__ == "__main__":
@@ -141,7 +142,7 @@ if __name__ == "__main__":
 
         print('PROCESSING DATA')
         df = preprocess(raw_df)
-        features = ['close', 'high', 'low','close_30_sma', 'close_60_sma', 'volume']
+        features = ['close', 'high', 'low','close_30_sma', 'close_60_sma', 'volume', 'boll_ub', 'boll_lb']
         # 'close', 'high', 'low', 'macd', 'boll_ub', 'boll_lb', 'rsi_30', 'cci_30', 'dx_30', 'close_30_sma', 'close_60_sma', 'vix'
         assert np.all(np.isfinite(df[features]).values), "Dataframe contains non-finite values (NaN, Inf, or -Inf)"
 
@@ -151,12 +152,14 @@ if __name__ == "__main__":
             comission_fee_pct=0.0025,
             time_window=50,
             reward_scaling=float(config['reward_scaling']),
-            features=["close", "high", "low"])
+            features=features)
         
         algo = args.algo
         sb_env, _ = environment.get_sb_env()
         agent = DRLAgent(env=sb_env)
-        model = agent.get_model(algo)
+        model_params = config.get("model", {})
+        model_params['device'] = device
+        model = agent.get_model(algo, model_kwargs=model_params)
 
         # set up logger
         now = datetime.now().strftime('%Y%m%d-%Hh%M')
@@ -166,8 +169,10 @@ if __name__ == "__main__":
         model.set_logger(new_logger)
 
         # Train the model
+        checkpoint_dir = f"checkpoints/{algo}/{now}"
+        checkpoint_callback = CheckpointCallback(save_freq=10000, save_path=checkpoint_dir, name_prefix=f"{algo}_model")
         print('BEGIN TRAINING')
-        trained_model = agent.train_model(model=model, tb_log_name=algo, total_timesteps=config['timesteps'])
+        trained_model = agent.train_model(model=model, tb_log_name=algo, total_timesteps=config['timesteps'], callback=checkpoint_callback)
 
         # Save the model
         if args.model_path is not None:
