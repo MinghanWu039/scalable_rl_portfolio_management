@@ -1,8 +1,10 @@
 import pandas as pd
+from pathlib import Path
+from stable_baselines3 import SAC as model_class
 
 from finrl.meta.preprocessor.yahoodownloader import YahooDownloader
 
-from .data_downloader import get_data
+from .data_downloader import get_data, short_name_sha256
 from .split import construct_stock_features, cluster_tic
 
 from finrl.meta.preprocessor.yahoodownloader import YahooDownloader
@@ -57,8 +59,12 @@ class Scalable():
             n_PCA_components, random_state
         )
 
-        # for sub_tics in self.tics_lst:
-        #     if 
+        self.sub_models = []
+        for sub_tics in self.tics_lst:
+            model_path = Path('model') / f"{short_name_sha256('_'.join(tics))}_{start_date}_{end_date}.zip"
+            if model_path.is_file():
+                self.sub_models.append(model_class.load(model_path))
+
 
 
     # def train_sub(algo, env_train, total_timesteps=50000):
