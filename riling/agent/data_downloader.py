@@ -37,15 +37,15 @@ def short_name_sha256(s: str, length: int = 16) -> str:
 
 def get_data(tics, start, end, market_tic, rf_tic):
     tics_data_file = Path("data") / f"{short_name_sha256('_'.join(tics))}_data.csv"
-    # if tics_data_file.is_file():
-    #     tics_df = pd.read_csv(tics_data_file) 
-    # else: 
-    tics_df = YahooDownloader(
-        start_date = start,
-        end_date = end,
-        ticker_list = tics
-    ).fetch_data()
-    tics_df.to_csv(tics_data_file, index=False)
+    if tics_data_file.is_file():
+        tics_df = pd.read_csv(tics_data_file) 
+    else: 
+        tics_df = YahooDownloader(
+            start_date = start,
+            end_date = end,
+            ticker_list = tics
+        ).fetch_data()
+        tics_df.to_csv(tics_data_file, index=False)
     
     market_data_file = Path("data") / f"{market_tic}_data.csv"
     if market_data_file.is_file():
