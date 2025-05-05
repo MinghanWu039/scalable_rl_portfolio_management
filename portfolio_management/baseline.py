@@ -8,6 +8,8 @@ import itertools
 from datetime import datetime
 import inspect
 import importlib
+from stable_baselines3.common.logger import configure
+from stable_baselines3.common.callbacks import CheckpointCallback
 
 sys.path.append("/home/miw039/scalable_rl_portfolio_management/FinRL-dev")
 # import finrl.meta.env_portfolio_optimization.env_portfolio_optimization
@@ -21,12 +23,11 @@ from finrl.meta.preprocessor.preprocessors import FeatureEngineer, data_split
 from finrl.agents.stablebaselines3.models import DRLAgent
 
 from finrl.plot import backtest_stats, backtest_plot, get_daily_return, get_baseline
-from stable_baselines3.common.logger import configure
-from stable_baselines3.common.callbacks import CheckpointCallback
+
 from finrl.config import INDICATORS
 from finrl import config_tickers
 
-print(inspect.getfile(PortfolioOptimizationEnv))
+# print(inspect.getfile(PortfolioOptimizationEnv))
 
 def load_yaml(configpath):
     with open(configpath, 'r') as f:
@@ -99,6 +100,8 @@ if __name__ == "__main__":
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"Using device: {device}")
 
+    features = ['close', 'high', 'low','close_30_sma', 'close_60_sma', 'volume', 'boll_ub', 'boll_lb']
+
     if args.test:
         if args.algo == "ppo":
             from stable_baselines3 import PPO as model_class
@@ -128,7 +131,7 @@ if __name__ == "__main__":
             comission_fee_pct=0.0025,
             time_window=50,
             reward_scaling=float(config['reward_scaling']),
-            features=['close', 'high', 'low']) # ,'close_30_sma', 'close_60_sma', 'volume'
+            features=features) # ,'close_30_sma', 'close_60_sma', 'volume'
         backtesting(environment, trained_model)
         
     else:
@@ -142,7 +145,6 @@ if __name__ == "__main__":
 
         print('PROCESSING DATA')
         df = preprocess(raw_df)
-        features = ['close', 'high', 'low','close_30_sma', 'close_60_sma', 'volume', 'boll_ub', 'boll_lb']
         # 'close', 'high', 'low', 'macd', 'boll_ub', 'boll_lb', 'rsi_30', 'cci_30', 'dx_30', 'close_30_sma', 'close_60_sma', 'vix'
         assert np.all(np.isfinite(df[features]).values), "Dataframe contains non-finite values (NaN, Inf, or -Inf)"
 
