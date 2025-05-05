@@ -477,6 +477,9 @@ class PortfolioOptimizationEnv(gym.Env):
         """
         return self._state
     
+    def get_final_weights(self):
+        return self._final_weights[-1]
+    
     def get_portfolio_value(self):
         """Returns the current portfolio value."""
         return self._portfolio_value
