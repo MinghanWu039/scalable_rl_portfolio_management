@@ -3,32 +3,7 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
-from sklearn.cluster import KMeans
-from finrl.meta.preprocessor.yahoodownloader import YahooDownloader
-
-market_tics = {
-    "S&P 500": "^GSPC",
-    "DJIA": "^DJI",
-    "NASDAQ": "^IXIC"
-}
-
-
-
-def get_market_df(start, end, market = "S&P 500"):
-    assert market in market_tics, f"market `{market}` not avaliable"
-    market_tic = market_tics[market]
-    df_market = YahooDownloader(start_date = start,
-                                end_date = end,
-                                ticker_list = [market_tic]).fetch_data()
-    
-    return df_market
-
-def get_rf_rate(start, end, tic="^IRX"):
-    df = YahooDownloader(start_date = start,
-                         end_date = end,
-                         ticker_list = [tic]).fetch_data()
-    df['rf_rate'] = df['close'] / 100.0
-    return df[['date', 'rf_rate']]
+from k_means_constrained import KMeansConstrained
 
 def construct_stock_features(df, df_market, df_rf) -> pd.DataFrame:
     # pepare market dataframe
@@ -94,52 +69,48 @@ def construct_stock_features(df, df_market, df_rf) -> pd.DataFrame:
 
 def cluster_tic(
     df,
-    min_cluster_size=50,
-    n_clusters=None,
+    avg_size,
+    diff,
     n_components=2,
     random_state=42
 ) -> list:
     """
-    使用 KMeans 聚类后，将小于 min_cluster_size 的“离群簇”成员重新分配到最近的大簇中，
-    最终返回不包含单独小簇（离群组）的 2D 列表，确保没有簇是“离群单独簇”。
+    使用容量受限的 KMeans（来自 sklearn-extra），确保每簇大小在 [avg_size-diff, avg_size+diff] 之间。
 
     参数：
     - df: 特征 DataFrame，index 为 tic
-    - n_clusters: 初始簇数
-    - min_cluster_size: 若某簇大小 < min_cluster_size，则视为“离群簇”
-    - n_components: PCA 维度
+    - avg_size: 目标平均簇大小
+    - diff: 容差
     - random_state: 随机种子
+    - n_components: PCA 降维维度
 
     返回：
-    - clusters: List[List[str]]，仅包含“有效簇”（大小 ≥ min_cluster_size）
+    - clusters: List[List[str]]，所有簇，其大小均在 [avg_size-diff, avg_size+diff] 区间内
     """
-    # 标准化 + PCA
-    X_std = StandardScaler().fit_transform(df.values)
-    X_pca = PCA(n_components=n_components, random_state=random_state).fit_transform(X_std)
-    
-    # 初始 KMeans
-    if n_clusters is None:
-        n_clusters = int(np.ceil(df.shape[0] / min_cluster_size))
-    km = KMeans(n_clusters=n_clusters, random_state=random_state)
-    labels = km.fit_predict(X_pca)
-    centers = km.cluster_centers_
-    
-    # 统计簇大小
-    counts = np.bincount(labels, minlength=n_clusters)
-    small = np.where(counts < min_cluster_size)[0]
-    large = np.where(counts >= min_cluster_size)[0]
-    
-    # 对“小簇”内成员重新分配到最近“大簇”
-    for i in np.where(np.isin(labels, small))[0]:
-        # 计算与所有大簇中心的距离
-        dists = np.linalg.norm(X_pca[i] - centers[large], axis=1)
-        # 重新指派到最近的大簇
-        labels[i] = large[np.argmin(dists)]
-    
-    # 构建仅含大簇的结果列表
-    clusters = [
-        df.index[labels == c].tolist() 
-        for c in large
-    ]
-    
+    # 1) 计算簇数并确保至少 1
+    total = df.shape[0]
+    n_clusters = max(1, int(round(total / avg_size)))
+
+    # 2) 标准化 + PCA
+    X = StandardScaler().fit_transform(df.values)
+    X_pca = PCA(n_components=n_components, random_state=random_state).fit_transform(X)
+
+    # 3) 用 KMeansConstrained 做聚类
+    size_min = max(1, avg_size - diff)
+    size_max = avg_size + diff
+    kmc = KMeansConstrained(
+        n_clusters=n_clusters,
+        size_min=size_min,
+        size_max=size_max,
+        random_state=random_state,
+    )
+    labels = kmc.fit_predict(X_pca)
+
+    # 4) 根据 labels 构建簇列表
+    clusters = []
+    for lbl in range(n_clusters):
+        members = df.index[labels == lbl].tolist()
+        if members:
+            clusters.append(members)
+
     return clusters
