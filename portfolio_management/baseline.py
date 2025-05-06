@@ -7,15 +7,16 @@ import argparse
 import itertools
 from datetime import datetime
 import inspect
+import hashlib
 import importlib
 from stable_baselines3.common.logger import configure
 from stable_baselines3.common.callbacks import CheckpointCallback
 
 sys.path.append("/home/miw039/scalable_rl_portfolio_management/FinRL-dev")
-# import finrl.meta.env_portfolio_optimization.env_portfolio_optimization
-# importlib.reload(finrl.meta.env_portfolio_optimization.env_portfolio_optimization)
-import finrl.agents.stablebaselines3.models
-importlib.reload(finrl.agents.stablebaselines3.models)
+import finrl.meta.env_portfolio_optimization.env_portfolio_optimization
+importlib.reload(finrl.meta.env_portfolio_optimization.env_portfolio_optimization)
+# import finrl.agents.stablebaselines3.models
+# importlib.reload(finrl.agents.stablebaselines3.models)
 
 from finrl.meta.preprocessor.yahoodownloader import YahooDownloader
 from finrl.meta.env_portfolio_optimization.env_portfolio_optimization import PortfolioOptimizationEnv
@@ -26,8 +27,17 @@ from finrl.plot import backtest_stats, backtest_plot, get_daily_return, get_base
 
 from finrl.config import INDICATORS
 from finrl import config_tickers
+from tic_config import tics_grouped
 
 # print(inspect.getfile(PortfolioOptimizationEnv))
+
+def short_name_sha256(s: str, length: int = 16) -> str:
+    """
+    Compute the SHA-256 hash of the string s and take the first length hex characters as a short name.
+    By default, 16 characters (i.e., 64 bits) are taken, which has a very low collision risk and is sufficiently short.
+    """
+    h = hashlib.sha256(s.encode('utf-8')).hexdigest()
+    return h[:length]
 
 def load_yaml(configpath):
     with open(configpath, 'r') as f:
@@ -100,7 +110,8 @@ if __name__ == "__main__":
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print(f"Using device: {device}")
 
-    features = ['close', 'high', 'low','close_30_sma', 'close_60_sma', 'volume', 'boll_ub', 'boll_lb']
+    features = ['close', 'high', 'low']
+    tics = tics_grouped[2]
 
     if args.test:
         if args.algo == "ppo":
@@ -117,9 +128,10 @@ if __name__ == "__main__":
             raise ValueError(f"Unsupported algorithm: {args.algo}")
         trained_model = model_class.load(args.model_path)
         if not args.data_path:
-            raw_df = YahooDownloader(start_date = config['test_start_date'],
-                                    end_date = config['test_end_date'],
-                                    ticker_list = config_tickers.DOW_30_TICKER).fetch_data()
+            # raw_df = YahooDownloader(start_date = config['test_start_date'],
+            #                         end_date = config['test_end_date'],
+            #                         ticker_list = tics).fetch_data()
+            raw_df = pd.read_csv(f"data/sub/{short_name_sha256('_'.join(tics))}_2009-01-01_2020-07-01.csv")
         else:
             raw_df = pd.read_csv(args.data_path)
         raw_df = raw_df[["date", "tic", "close", "high", "low", "volume"]]
@@ -136,11 +148,13 @@ if __name__ == "__main__":
         
     else:
         if not args.data_path:
-            raw_df = YahooDownloader(start_date = config['test_start_date'],
-                                    end_date = config['test_end_date'],
-                                    ticker_list = config_tickers.DOW_30_TICKER).fetch_data()
+            # raw_df = YahooDownloader(start_date = config['test_start_date'],
+            #                         end_date = config['test_end_date'],
+            #                         ticker_list = config_tickers.DOW_30_TICKER).fetch_data()
+            raw_df = pd.read_csv(f"data/sub/{short_name_sha256('_'.join(tics))}_2009-01-01_2020-07-01.csv")
         else:
             raw_df = pd.read_csv(args.data_path)
+            
         raw_df = raw_df[["date", "tic", "close", "high", "low", "volume"]]
 
         print('PROCESSING DATA')
@@ -178,7 +192,8 @@ if __name__ == "__main__":
 
         # Save the model
         if args.model_path is not None:
-            trained_model.save(args.model_path)
+            trained_model.save(f"{args.model_path}/{short_name_sha256('_'.join(tics))}.zip")
+            # trained_model.save(args.model_path)
             print(f"Model saved to {args.model_path}")
         else:
             trained_model.save(f"trained_models/{algo}/{now}.zip")
