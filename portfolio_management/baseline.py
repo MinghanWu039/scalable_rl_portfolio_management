@@ -10,7 +10,7 @@ import inspect
 import hashlib
 import importlib
 from stable_baselines3.common.logger import configure
-from stable_baselines3.common.callbacks import CheckpointCallback
+from stable_baselines3.common.callbacks import CheckpointCallback, BaseCallback
 
 sys.path.append("/home/miw039/scalable_rl_portfolio_management/FinRL-dev")
 import finrl.meta.env_portfolio_optimization.env_portfolio_optimization

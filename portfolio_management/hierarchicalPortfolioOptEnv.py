@@ -124,7 +124,7 @@ class hierarchicalPortfolioOptEnv(gym.Env):
 
         # dims and spaces
         self._tic_list = self._df[self._tic_column].unique()
-        action_space = 1 + self.portfolio_size
+        action_space = self.portfolio_size
 
         # define action space
         self.action_space = spaces.Box(low=0, high=1, shape=(action_space,))
@@ -202,7 +202,7 @@ class hierarchicalPortfolioOptEnv(gym.Env):
 
             # load next state
             self._time_index += 1
-            self._state = self._get_obs(self._time_index)
+            self._state = self._get_obs()
 
             # save initial portfolio value of this time step
             self._asset_memory["initial"].append(self._portfolio_value)
@@ -224,7 +224,7 @@ class hierarchicalPortfolioOptEnv(gym.Env):
             self._reward = portfolio_reward
             self._reward = self._reward * self._reward_scaling
 
-        return self._state, self._reward, self._terminal
+        return self._state, self._reward, self._terminal, {}
     
 
     def reset(self):
@@ -429,3 +429,14 @@ class hierarchicalPortfolioOptEnv(gym.Env):
             .reset_index(drop=True)
         )
         return df_temporal_variation
+    
+    def get_sb_env(self, env_number=1):
+        """Generates an environment compatible with Stable Baselines 3. The
+        generated environment is a vectorized version of the current one.
+
+        Returns:
+            A tuple with the generated environment and an initial observation.
+        """
+        e = DummyVecEnv([lambda: self] * env_number)
+        obs = e.reset()
+        return e, obs
