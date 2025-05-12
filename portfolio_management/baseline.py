@@ -6,7 +6,7 @@ import sys
 import argparse
 import itertools
 from datetime import datetime
-import inspect
+import os
 import hashlib
 import importlib
 from stable_baselines3.common.logger import configure
@@ -43,13 +43,17 @@ def load_yaml(configpath):
     with open(configpath, 'r') as f:
         return yaml.safe_load(f)
 
-def preprocess(df):
+def preprocess(df, start_date, end_date):
     fe = FeatureEngineer(
         use_technical_indicator=True,
         tech_indicator_list = INDICATORS,
         use_vix=False,
         use_turbulence=False,
         user_defined_feature = False)
+    
+    df['date'] = pd.to_datetime(df['date'])
+    df = df[(df['date'] > pd.to_datetime(start_date)) & (df['date'] < pd.to_datetime(end_date))]
+    df['date'] = df['date'].dt.strftime('%Y-%m-%d')
 
     processed = fe.preprocess_data(df)
 
@@ -71,9 +75,13 @@ def backtesting(env_test, model):
     max_steps = environment.episode_length
     test_env, test_obs = environment.get_sb_env()
     test_env.reset()
+    weight_history = []
+    print("weights", env_test.get_final_weights()[:5])
     for i in range(max_steps):
         action, _states = model.predict(test_obs, deterministic=True)
         test_obs, rewards, dones, info = env_test.step(action)
+        weight_history.append(env_test.get_final_weights())
+        print("weights", weight_history[-1][:5])
         account_value.append(env_test.get_portfolio_value())
         dates.append(env_test.get_date())
     df_account_value = pd.DataFrame({'account_value': account_value, 'date': dates})
@@ -94,6 +102,7 @@ def backtesting(env_test, model):
 
     merged = model_stats.merge(baseline_stats, left_index=True, right_index=True, suffixes=('_model', '_baseline'))
     merged.to_csv(f'backtests/backtest_{now}.csv')
+    pd.DataFrame({'dates': dates, 'weights': weight_history}).to_csv(f'backtests/weights_{now}.csv')
     print(f'backtesting stats saved to backtest_{now}.csv')
 
 if __name__ == "__main__":
@@ -103,6 +112,7 @@ if __name__ == "__main__":
     parser.add_argument('--model_path', type=str, default=None, help='Path to save/load the model')
     parser.add_argument('--test', action='store_true', help='Test the model')
     parser.add_argument('--data_path', type=str, default=None, help='Path to the processed data file')
+    parser.add_argument('--sha256', action='store_true', help='Use SHA256 for model name')
     args = parser.parse_args()
 
     config = load_yaml(args.config)
@@ -111,6 +121,7 @@ if __name__ == "__main__":
     print(f"Using device: {device}")
 
     features = ['close', 'high', 'low']
+    # tics = config_tickers.DOW_30_TICKER
     tics = tics_grouped[2]
 
     if args.test:
@@ -127,16 +138,20 @@ if __name__ == "__main__":
         else:
             raise ValueError(f"Unsupported algorithm: {args.algo}")
         trained_model = model_class.load(args.model_path)
-        if not args.data_path:
-            # raw_df = YahooDownloader(start_date = config['test_start_date'],
-            #                         end_date = config['test_end_date'],
-            #                         ticker_list = tics).fetch_data()
-            raw_df = pd.read_csv(f"data/sub/{short_name_sha256('_'.join(tics))}_2009-01-01_2020-07-01.csv")
+        if args.data_path:
+            if args.sha256:
+                raw_df = pd.read_csv(os.path.join(args.data_path, f"{short_name_sha256('_'.join(tics))}_2009-01-01_2020-07-01.csv"))
+            else:
+                raw_df = pd.read_csv(args.data_path)
         else:
-            raw_df = pd.read_csv(args.data_path)
+            data_path = "data/sub"
+            if args.sha256:
+                raw_df = pd.read_csv(os.path.join(data_path, f"{short_name_sha256('_'.join(tics))}_2009-01-01_2020-07-01.csv"))
+            else:
+                raw_df = pd.read_csv(data_path)
         raw_df = raw_df[["date", "tic", "close", "high", "low", "volume"]]
         print('PROCESSING DATA')
-        df = preprocess(raw_df)
+        df = preprocess(raw_df, config['test_start_date'], config['test_end_date'])
         environment = PortfolioOptimizationEnv(
             df,
             initial_amount=config['initial_amount'],
@@ -147,18 +162,22 @@ if __name__ == "__main__":
         backtesting(environment, trained_model)
         
     else:
-        if not args.data_path:
-            # raw_df = YahooDownloader(start_date = config['test_start_date'],
-            #                         end_date = config['test_end_date'],
-            #                         ticker_list = config_tickers.DOW_30_TICKER).fetch_data()
-            raw_df = pd.read_csv(f"data/sub/{short_name_sha256('_'.join(tics))}_2009-01-01_2020-07-01.csv")
+        if args.data_path:
+            if args.sha256:
+                raw_df = pd.read_csv(os.path.join(args.data_path, f"{short_name_sha256('_'.join(tics))}_2009-01-01_2020-07-01.csv"))
+            else:
+                raw_df = pd.read_csv(args.data_path)
         else:
-            raw_df = pd.read_csv(args.data_path)
+            data_path = "data/sub"
+            if args.sha256:
+                raw_df = pd.read_csv(os.path.join(data_path, f"{short_name_sha256('_'.join(tics))}_2009-01-01_2020-07-01.csv"))
+            else:
+                raw_df = pd.read_csv(data_path)
             
         raw_df = raw_df[["date", "tic", "close", "high", "low", "volume"]]
 
         print('PROCESSING DATA')
-        df = preprocess(raw_df)
+        df = preprocess(raw_df, config['train_start_date'], config['train_end_date'])
         # 'close', 'high', 'low', 'macd', 'boll_ub', 'boll_lb', 'rsi_30', 'cci_30', 'dx_30', 'close_30_sma', 'close_60_sma', 'vix'
         assert np.all(np.isfinite(df[features]).values), "Dataframe contains non-finite values (NaN, Inf, or -Inf)"
 
