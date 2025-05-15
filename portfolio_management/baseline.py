@@ -54,7 +54,6 @@ def preprocess(df, start_date, end_date):
     df['date'] = pd.to_datetime(df['date'])
     df = df[(df['date'] > pd.to_datetime(start_date)) & (df['date'] < pd.to_datetime(end_date))]
     df['date'] = df['date'].dt.strftime('%Y-%m-%d')
-
     processed = fe.preprocess_data(df)
 
     list_ticker = processed["tic"].unique().tolist()
@@ -69,6 +68,7 @@ def preprocess(df, start_date, end_date):
 
 def backtesting(env_test, model):
     print("==============Get Backtest Stats===========")
+    now = datetime.now().strftime('%Y%m%d-%Hh%M')
     # Get model states
     account_value = []
     dates = []
@@ -81,12 +81,11 @@ def backtesting(env_test, model):
         action, _states = model.predict(test_obs, deterministic=True)
         test_obs, rewards, dones, info = env_test.step(action)
         weight_history.append(env_test.get_final_weights())
-        print("weights", weight_history[-1][:5])
         account_value.append(env_test.get_portfolio_value())
         dates.append(env_test.get_date())
     df_account_value = pd.DataFrame({'account_value': account_value, 'date': dates})
+    df_account_value.to_csv(f'account_values/account_value_{now}.csv')
 
-    now = datetime.now().strftime('%Y%m%d-%Hh%M')
     print('Model Backtest Stats')
     model_stats = backtest_stats(account_value=df_account_value)
     model_stats = pd.DataFrame(model_stats)
@@ -102,7 +101,7 @@ def backtesting(env_test, model):
 
     merged = model_stats.merge(baseline_stats, left_index=True, right_index=True, suffixes=('_model', '_baseline'))
     merged.to_csv(f'backtests/backtest_{now}.csv')
-    pd.DataFrame({'dates': dates, 'weights': weight_history}).to_csv(f'backtests/weights_{now}.csv')
+    # pd.DataFrame({'dates': dates, 'weights': weight_history}).to_csv(f'backtests/weights_{now}.csv')
     print(f'backtesting stats saved to backtest_{now}.csv')
 
 if __name__ == "__main__":
@@ -124,6 +123,8 @@ if __name__ == "__main__":
     # tics = config_tickers.DOW_30_TICKER
     tics = tics_grouped[2]
 
+    total_date_range = f"_{config['train_start_date']}_{config['test_end_date']}"
+
     if args.test:
         if args.algo == "ppo":
             from stable_baselines3 import PPO as model_class
@@ -137,16 +138,20 @@ if __name__ == "__main__":
             from stable_baselines3 import TD3 as model_class
         else:
             raise ValueError(f"Unsupported algorithm: {args.algo}")
-        trained_model = model_class.load(args.model_path)
+        if args.sha256 and not (".zip" in args.model_path):
+            model_name = short_name_sha256('_'.join(tics))
+            trained_model = model_class.load(os.path.join(args.model_path, model_name + ".zip"))
+        else:
+            trained_model = model_class.load(args.model_path)
         if args.data_path:
-            if args.sha256:
-                raw_df = pd.read_csv(os.path.join(args.data_path, f"{short_name_sha256('_'.join(tics))}_2009-01-01_2020-07-01.csv"))
+            if args.sha256 and not (".csv" in args.data_path):
+                raw_df = pd.read_csv(os.path.join(args.data_path, short_name_sha256('_'.join(tics)) + total_date_range + ".csv"))
             else:
                 raw_df = pd.read_csv(args.data_path)
         else:
             data_path = "data/sub"
             if args.sha256:
-                raw_df = pd.read_csv(os.path.join(data_path, f"{short_name_sha256('_'.join(tics))}_2009-01-01_2020-07-01.csv"))
+                raw_df = pd.read_csv(os.path.join(data_path, short_name_sha256('_'.join(tics)) + total_date_range + ".csv"))
             else:
                 raw_df = pd.read_csv(data_path)
         raw_df = raw_df[["date", "tic", "close", "high", "low", "volume"]]
@@ -163,14 +168,14 @@ if __name__ == "__main__":
         
     else:
         if args.data_path:
-            if args.sha256:
-                raw_df = pd.read_csv(os.path.join(args.data_path, f"{short_name_sha256('_'.join(tics))}_2009-01-01_2020-07-01.csv"))
+            if args.sha256 and not (".csv" in args.data_path):
+                raw_df = pd.read_csv(os.path.join(args.data_path, short_name_sha256('_'.join(tics)) + total_date_range + ".csv"))
             else:
                 raw_df = pd.read_csv(args.data_path)
         else:
             data_path = "data/sub"
             if args.sha256:
-                raw_df = pd.read_csv(os.path.join(data_path, f"{short_name_sha256('_'.join(tics))}_2009-01-01_2020-07-01.csv"))
+                raw_df = pd.read_csv(os.path.join(data_path, short_name_sha256('_'.join(tics)) + total_date_range + ".csv"))
             else:
                 raw_df = pd.read_csv(data_path)
             

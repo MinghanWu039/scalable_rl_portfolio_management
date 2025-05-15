@@ -25,13 +25,17 @@ def load_yaml(configpath):
     with open(configpath, 'r') as f:
         return yaml.safe_load(f)
 
-def preprocess(df):
+def preprocess(df, start_date, end_date):
     fe = FeatureEngineer(
         use_technical_indicator=False,
         tech_indicator_list = INDICATORS,
         use_vix=False,
         use_turbulence=False,
         user_defined_feature = False)
+    
+    df['date'] = pd.to_datetime(df['date'])
+    df = df[(df['date'] > pd.to_datetime(start_date)) & (df['date'] < pd.to_datetime(end_date))]
+    df['date'] = df['date'].dt.strftime('%Y-%m-%d')
 
     processed = fe.preprocess_data(df)
 
@@ -59,9 +63,9 @@ def backtesting(env_test, model):
         account_value.append(env_test.get_portfolio_value())
         dates.append(env_test.get_date())
     df_account_value = pd.DataFrame({'account_value': account_value, 'date': dates})
+    df_account_value.to_csv('account_value.csv', index=False)
 
     now = datetime.now().strftime('%Y%m%d-%Hh%M')
-    print('Model Backtest Stats')
     model_stats = backtest_stats(account_value=df_account_value)
     model_stats = pd.DataFrame(model_stats)
     
@@ -80,9 +84,10 @@ def backtesting(env_test, model):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='FinRL Hierarchical Portfolio Management')
-    parser.add_argument('--config', type=str, default='config/manager_config.yaml', help='Path to the config file')
+    parser.add_argument('--config', type=str, default='config/manager_config_sac.yaml', help='Path to the config file')
     parser.add_argument('--algo', type=str, default='sac', help='Algorithm to use (ppo, a2c, ddpg, sac, td3)')
-    parser.add_argument('--model_path', type=str, default=None, help='Path to save/load the model')
+    parser.add_argument('--model_path', type=str, default=None, help='Path to load/save the trained model')
+    parser.add_argument('--sub_model_path', type=str, default=None, help='Path to load the trading models')
     parser.add_argument('--test', action='store_true', help='Test the model')
     parser.add_argument('--data_path', type=str, default=None, help='Path to the processed data file')
     args = parser.parse_args()
@@ -95,23 +100,19 @@ if __name__ == "__main__":
     model_params['device'] = device
     source = config.get("source", {})
 
-
     # get models and data
     hash_codes = source['hash_codes'].strip().split(' ')
-    model_lst = [os.path.join(args.model_path, h) for h in hash_codes]
+    model_lst = [os.path.join(args.sub_model_path, h) for h in hash_codes]
     ticker_grp_idx = source['ticker_grp_idx'].strip().split(' ')
     ticker_grps = [tics_grouped[int(idx)] for idx in ticker_grp_idx]
-    data_pths = [os.path.join(args.data_path, eval(source['data_file_format']).format(h=h)) for h in hash_codes]
+    total_date_range = f"_{config['train_start_date']}_{config['test_end_date']}"
+    data_pths = [os.path.join(args.data_path, h + total_date_range + ".csv") for h in hash_codes]
     df = pd.DataFrame(columns=['date','close','high','low','open','volume','tic','day'])
     for pth in data_pths:
         df = pd.concat([df, pd.read_csv(pth)])
 
     # create environment
     features = ['close', 'high', 'low']
-    print('PROCESSING DATA')
-    df = preprocess(df)
-    environment = hierarchicalPortfolioOptEnv(df, 100_000, model_lst, ticker_grps, comission_fee_pct=0.0025,
-                                      time_window=50, reward_scaling=1e-4, features=features)
 
     if args.test:
         if args.algo == "ppo":
@@ -126,12 +127,27 @@ if __name__ == "__main__":
             from stable_baselines3 import TD3 as model_class
         else:
             raise ValueError(f"Unsupported algorithm: {args.algo}")
+        
+        # create environment
+        print("PROCESSING TEST DATA")
+        test_df = preprocess(df, config['test_start_date'], config['test_end_date'])
+        environment = hierarchicalPortfolioOptEnv(test_df, 100_000, model_lst, ticker_grps, comission_fee_pct=0.0025,
+                                                  time_window=50, reward_scaling=1e-4, features=features)
+        # load model
         trained_model = model_class.load(args.model_path)
+        # backtest model
         backtesting(environment, trained_model)
         
     else:
+        # create environment
+        print("PROCESSING TRAINING DATA")
+        train_df = preprocess(df, config['train_start_date'], config['train_end_date'])
+        environment = hierarchicalPortfolioOptEnv(train_df, 100_000, model_lst, ticker_grps, comission_fee_pct=0.0025,
+                                                  time_window=50, reward_scaling=1e-4, features=features)
         algo = args.algo
         sb_env, _ = environment.get_sb_env()
+
+        # configure agent
         agent = DRLAgent(env=sb_env)
         model = agent.get_model(algo, model_kwargs=model_params)
 

@@ -8,6 +8,10 @@ from gym.utils import seeding
 import sys
 import quantstats as qs
 
+import finrl.meta.env_portfolio_optimization.env_portfolio_optimization
+import importlib
+importlib.reload(finrl.meta.env_portfolio_optimization.env_portfolio_optimization)
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from stable_baselines3.common.vec_env import DummyVecEnv
@@ -169,7 +173,7 @@ class hierarchicalPortfolioOptEnv(gym.Env):
                 }
             )
             metrics_df.set_index("date", inplace=True)
-            print("=================================")
+            print("================Hierarchical Portfolio Management Callback=================")
             print("Initial portfolio value:{}".format(self._asset_memory["final"][0]))
             print(f"Final portfolio value: {self._portfolio_value}")
             print(
@@ -203,6 +207,7 @@ class hierarchicalPortfolioOptEnv(gym.Env):
             # load next state
             self._time_index += 1
             self._state = self._get_obs()
+            self._date_memory.append(self._sorted_times[self._time_index])
 
             # save initial portfolio value of this time step
             self._asset_memory["initial"].append(self._portfolio_value)
@@ -248,6 +253,8 @@ class hierarchicalPortfolioOptEnv(gym.Env):
     
     def get_portfolio_value(self):
         """Returns the current portfolio value."""
+        if isinstance(self._portfolio_value, np.ndarray):
+            return self._portfolio_value[0]
         return self._portfolio_value
     
     def enumerate_portfolio(self):
@@ -274,7 +281,7 @@ class hierarchicalPortfolioOptEnv(gym.Env):
         subgrp_vals = []
         for model, env, env_ob in zip(self.models, self.envs, self.env_obs):
             action, _states = model.predict(env_ob[-1], deterministic=True)
-            ob, rewards, dones, info = env.step(action)
+            ob, rewards, dones, info = env.step(action, callback=False)
             env_ob.append(ob)
             subgrp_vals.append(env.get_portfolio_value())
         subgrp_vals = np.array(subgrp_vals)
