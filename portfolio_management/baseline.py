@@ -12,7 +12,7 @@ import importlib
 from stable_baselines3.common.logger import configure
 from stable_baselines3.common.callbacks import CheckpointCallback, BaseCallback
 
-sys.path.append("/home/miw039/scalable_rl_portfolio_management/FinRL-dev")
+sys.path.append("/home/riling/scalable_rl_portfolio_management/FinRL-dev")
 import finrl.meta.env_portfolio_optimization.env_portfolio_optimization
 importlib.reload(finrl.meta.env_portfolio_optimization.env_portfolio_optimization)
 # import finrl.agents.stablebaselines3.models
@@ -27,7 +27,7 @@ from finrl.plot import backtest_stats, backtest_plot, get_daily_return, get_base
 
 from finrl.config import INDICATORS
 from finrl import config_tickers
-from tic_config import tics_grouped
+from tic_config import tics_grouped, tics_176
 
 # print(inspect.getfile(PortfolioOptimizationEnv))
 
@@ -100,7 +100,7 @@ def backtesting(env_test, model):
 
     merged = model_stats.merge(baseline_stats, left_index=True, right_index=True, suffixes=('_model', '_baseline'))
     merged.to_csv(f'backtests/backtest_{now}.csv')
-    # pd.DataFrame({'dates': dates, 'weights': weight_history}).to_csv(f'backtests/weights_{now}.csv')
+    pd.DataFrame({'dates': dates, 'weights': weight_history}).to_csv(f'backtests/weights_{now}.csv')
     print(f'backtesting stats saved to backtest_{now}.csv')
 
 if __name__ == "__main__":
@@ -121,7 +121,7 @@ if __name__ == "__main__":
 
     features = ['close', 'high', 'low']
     # tics = config_tickers.DOW_30_TICKER
-    tics = tics_grouped[2]
+    tics = tics_176
 
     total_date_range = f"_{config['train_start_date']}_{config['test_end_date']}"
 
