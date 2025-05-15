@@ -88,8 +88,9 @@ if __name__ == "__main__":
     parser.add_argument('--algo', type=str, default='sac', help='Algorithm to use (ppo, a2c, ddpg, sac, td3)')
     parser.add_argument('--model_path', type=str, default=None, help='Path to load/save the trained model')
     parser.add_argument('--sub_model_path', type=str, default=None, help='Path to load the trading models')
-    parser.add_argument('--test', action='store_true', help='Test the model')
     parser.add_argument('--data_path', type=str, default=None, help='Path to the processed data file')
+    parser.add_argument('--retrain', action='store_true', help='Retrain the model')
+    parser.add_argument('--test', action='store_true', help='Test the model')
     args = parser.parse_args()
 
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -149,7 +150,23 @@ if __name__ == "__main__":
 
         # configure agent
         agent = DRLAgent(env=sb_env)
-        model = agent.get_model(algo, model_kwargs=model_params)
+        if args.retrain:
+            assert args.model_path is not None, "Model path must be provided for retraining"
+            if args.algo == "ppo":
+                from stable_baselines3 import PPO as model_class
+            elif args.algo == "sac":
+                from stable_baselines3 import SAC as model_class
+            elif args.algo == "a2c":
+                from stable_baselines3 import A2C as model_class
+            elif args.algo == "ddpg":
+                from stable_baselines3 import DDPG as model_class
+            elif args.algo == "td3":
+                from stable_baselines3 import TD3 as model_class
+            else:
+                raise ValueError(f"Unsupported algorithm: {args.algo}")
+            model = model_class.load(args.model_path, env=sb_env, **model_params)
+        else:
+            model = agent.get_model(algo, model_kwargs=model_params)
 
         # set up logger
         now = datetime.now().strftime('%Y%m%d-%Hh%M')

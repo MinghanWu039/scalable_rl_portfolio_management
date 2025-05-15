@@ -18,7 +18,7 @@ importlib.reload(finrl.meta.env_portfolio_optimization.env_portfolio_optimizatio
 # import finrl.agents.stablebaselines3.models
 # importlib.reload(finrl.agents.stablebaselines3.models)
 
-from finrl.meta.preprocessor.yahoodownloader import YahooDownloader
+# from finrl.meta.preprocessor.yahoodownloader import YahooDownloader
 from finrl.meta.env_portfolio_optimization.env_portfolio_optimization import PortfolioOptimizationEnv
 from finrl.meta.preprocessor.preprocessors import FeatureEngineer, data_split
 from finrl.agents.stablebaselines3.models import DRLAgent
@@ -76,7 +76,6 @@ def backtesting(env_test, model):
     test_env, test_obs = environment.get_sb_env()
     test_env.reset()
     weight_history = []
-    print("weights", env_test.get_final_weights()[:5])
     for i in range(max_steps):
         action, _states = model.predict(test_obs, deterministic=True)
         test_obs, rewards, dones, info = env_test.step(action)
@@ -110,6 +109,7 @@ if __name__ == "__main__":
     parser.add_argument('--algo', type=str, default='sac', help='Algorithm to use (ppo, a2c, ddpg, sac, td3)')
     parser.add_argument('--model_path', type=str, default=None, help='Path to save/load the model')
     parser.add_argument('--test', action='store_true', help='Test the model')
+    parser.add_argument('--retrain', action='store_true', help='Retrain the model')
     parser.add_argument('--data_path', type=str, default=None, help='Path to the processed data file')
     parser.add_argument('--sha256', action='store_true', help='Use SHA256 for model name')
     args = parser.parse_args()
@@ -199,7 +199,27 @@ if __name__ == "__main__":
         agent = DRLAgent(env=sb_env)
         model_params = config.get("model", {})
         model_params['device'] = device
-        model = agent.get_model(algo, model_kwargs=model_params)
+        if args.retrain:
+            assert args.model_path is not None, "Model path must be provided for retraining"
+            if args.algo == "ppo":
+                from stable_baselines3 import PPO as model_class
+            elif args.algo == "sac":
+                from stable_baselines3 import SAC as model_class
+            elif args.algo == "a2c":
+                from stable_baselines3 import A2C as model_class
+            elif args.algo == "ddpg":
+                from stable_baselines3 import DDPG as model_class
+            elif args.algo == "td3":
+                from stable_baselines3 import TD3 as model_class
+            else:
+                raise ValueError(f"Unsupported algorithm: {args.algo}")
+            if args.sha256 and not (".zip" in args.model_path):
+                model_name = short_name_sha256('_'.join(tics))
+                model = model_class.load(os.path.join(args.model_path, model_name + ".zip"), env=sb_env, **model_params)
+            else:
+                model = model_class.load(args.model_path, env=sb_env, **model_params)
+        else:
+            model = agent.get_model(algo, model_kwargs=model_params)
 
         # set up logger
         now = datetime.now().strftime('%Y%m%d-%Hh%M')
