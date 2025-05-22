@@ -21,6 +21,31 @@ from hierarchicalPortfolioOptEnv import hierarchicalPortfolioOptEnv
 from finrl.config import INDICATORS
 from tic_config import tics_grouped
 
+class MyCheckpointCallback(CheckpointCallback):
+    def __init__(self, save_freq, save_path, name_prefix="rl_model", verbose=0):
+        """
+        A custom checkpoint callback that extends the functionality of the CheckpointCallback
+        by allowing additional custom behavior during the callback.
+
+        :param save_freq: (int) Save the model every `save_freq` steps
+        :param save_path: (str) Path to the folder where the model will be saved
+        :param name_prefix: (str) Prefix for the saved model filename
+        :param verbose: (int) Verbosity level
+        :param custom_function: (callable) A custom function to execute during the callback
+                                 It should accept the following arguments: (locals_, globals_)
+        """
+        super().__init__(save_freq, save_path, name_prefix, verbose)
+        self.verbose = verbose
+
+    def _on_step(self) -> bool:
+        # Call the parent class's _on_step method to handle checkpoint saving
+        result = super()._on_step()
+        if self.verbose > 0:
+            print("action:", self.locals['actions'])
+            print("reward:", self.locals['rewards'])
+            print("=" * 20)
+        return result
+
 def load_yaml(configpath):
     with open(configpath, 'r') as f:
         return yaml.safe_load(f)
@@ -51,6 +76,7 @@ def preprocess(df, start_date, end_date):
 
 def backtesting(env_test, model):
     print("==============Get Backtest Stats===========")
+    now = datetime.now().strftime('%Y%m%d-%Hh%M')
     # Get model states
     account_value = []
     dates = []
@@ -61,11 +87,11 @@ def backtesting(env_test, model):
         action, _states = model.predict(test_obs, deterministic=True)
         test_obs, rewards, dones, info = env_test.step(action)
         account_value.append(env_test.get_portfolio_value())
+        print("Weights: ", env_test.get_final_weights())
         dates.append(env_test.get_date())
     df_account_value = pd.DataFrame({'account_value': account_value, 'date': dates})
-    df_account_value.to_csv('account_value.csv', index=False)
+    df_account_value.to_csv(f'account_values/account_value_{now}.csv')
 
-    now = datetime.now().strftime('%Y%m%d-%Hh%M')
     model_stats = backtest_stats(account_value=df_account_value)
     model_stats = pd.DataFrame(model_stats)
     
@@ -132,8 +158,15 @@ if __name__ == "__main__":
         # create environment
         print("PROCESSING TEST DATA")
         test_df = preprocess(df, config['test_start_date'], config['test_end_date'])
-        environment = hierarchicalPortfolioOptEnv(test_df, 100_000, model_lst, ticker_grps, comission_fee_pct=0.0025,
-                                                  time_window=50, reward_scaling=1e-4, features=features)
+        environment = hierarchicalPortfolioOptEnv(test_df, 
+                                                  100_000, 
+                                                  model_lst, 
+                                                  ticker_grps, 
+                                                  comission_fee_pct=0.0025,
+                                                  time_window=50, 
+                                                  reward_scaling=1e-4, 
+                                                  features=features, 
+                                                  return_last_action=True)
         # load model
         trained_model = model_class.load(args.model_path)
         # backtest model
@@ -177,9 +210,9 @@ if __name__ == "__main__":
 
         # Train the model
         checkpoint_dir = f"checkpoints/{algo}_manager/{now}"
-        checkpoint_callback = CheckpointCallback(save_freq=30000, save_path=checkpoint_dir, name_prefix=f"{algo}_model")
+        callback = MyCheckpointCallback(save_freq=30000, save_path=checkpoint_dir, name_prefix=f"{algo}_model", verbose=1)
         print('BEGIN TRAINING')
-        trained_model = agent.train_model(model=model, tb_log_name=algo, total_timesteps=config['timesteps'], callback=checkpoint_callback)
+        trained_model = agent.train_model(model=model, tb_log_name=algo, total_timesteps=config['timesteps'], callback=callback)
 
         # Save the model
         if args.model_path is not None:

@@ -213,6 +213,8 @@ class hierarchicalPortfolioOptEnv(gym.Env):
             self._asset_memory["initial"].append(self._portfolio_value)
             # calculate the new portfolio value after changing the weights
             self._portfolio_value = np.dot(weights, self._state)
+            # calculate the new weight after changing prices
+            weights = weights * self._state / self._portfolio_value
 
             # save final portfolio value and weights of this time step
             self._asset_memory["final"].append(self._portfolio_value)
@@ -242,6 +244,9 @@ class hierarchicalPortfolioOptEnv(gym.Env):
         self._terminal = False
 
         return self._state
+    
+    def get_final_weights(self):
+        return self._final_weights[-1]
     
     def render(self, mode="human"):
         """Renders the environment.
@@ -300,11 +305,11 @@ class hierarchicalPortfolioOptEnv(gym.Env):
         self._portfolio_reward_memory = [0]
         # initial action: all money is allocated in cash
         self._actions_memory = [
-            np.array([1] + [0] * self.portfolio_size, dtype=np.float32)
+            np.array([1] * self.portfolio_size, dtype=np.float32) / self.portfolio_size
         ]
         # memorize portfolio weights at the ending of time step
         self._final_weights = [
-            np.array([1] + [0] * self.portfolio_size, dtype=np.float32)
+            np.array([1] * self.portfolio_size, dtype=np.float32) / self.portfolio_size
         ]
         # memorize datetimes
         self._date_memory = [date_time]
