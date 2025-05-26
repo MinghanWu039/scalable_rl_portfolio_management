@@ -12,7 +12,7 @@ import importlib
 from stable_baselines3.common.logger import configure
 from stable_baselines3.common.callbacks import CheckpointCallback, BaseCallback
 
-sys.path.append("/home/miw039/scalable_rl_portfolio_management/FinRL-dev")
+# sys.path.append("/home/riling/scalable_rl_portfolio_management/FinRL-dev")
 import finrl.meta.env_portfolio_optimization.env_portfolio_optimization
 importlib.reload(finrl.meta.env_portfolio_optimization.env_portfolio_optimization)
 # import finrl.agents.stablebaselines3.models
@@ -21,7 +21,7 @@ importlib.reload(finrl.meta.env_portfolio_optimization.env_portfolio_optimizatio
 # from finrl.meta.preprocessor.yahoodownloader import YahooDownloader
 from finrl.meta.env_portfolio_optimization.env_portfolio_optimization import PortfolioOptimizationEnv
 from finrl.meta.preprocessor.preprocessors import FeatureEngineer, data_split
-from finrl.agents.stablebaselines3.models import DRLAgent
+from agent import DRLAgent
 
 from finrl.plot import backtest_stats, backtest_plot, get_daily_return, get_baseline
 
@@ -83,7 +83,8 @@ def backtesting(env_test, model):
         account_value.append(env_test.get_portfolio_value())
         dates.append(env_test.get_date())
     df_account_value = pd.DataFrame({'account_value': account_value, 'date': dates})
-    df_account_value.to_csv(f'account_values/account_value_{now}.csv')
+    # df_account_value.to_csv(f'account_values/account_value_{now}.csv')
+    # df_account_value.to_csv(f'account_values/' + short_name_sha256('_'.join(tics)) + total_date_range + ".csv")
 
     print('Model Backtest Stats')
     model_stats = backtest_stats(account_value=df_account_value)
@@ -100,9 +101,8 @@ def backtesting(env_test, model):
 
     merged = model_stats.merge(baseline_stats, left_index=True, right_index=True, suffixes=('_model', '_baseline'))
     merged.to_csv(f'backtests/backtest_{now}.csv')
-    pd.DataFrame({'dates': dates, 'weights': weight_history}).to_csv(f'weights/weights_{now}.csv')
-    print('weights saved to weights_{now}.csv')
-    print('account values saved to account_value_{now}.csv')
+    # pd.DataFrame({'dates': dates, 'weights': weight_history}).to_csv(f'backtests/weights_{now}.csv')
+    # pd.DataFrame({'dates': dates, 'weights': weight_history}).to_csv(f'weights/' + short_name_sha256('_'.join(tics)) + total_date_range + ".csv")
     print(f'backtesting stats saved to backtest_{now}.csv')
 
 if __name__ == "__main__":
@@ -122,8 +122,13 @@ if __name__ == "__main__":
     print(f"Using device: {device}")
 
     features = ['close', 'high', 'low']
-    # tics = list(itertools.chain.from_iterable(tics_grouped))
-    tics = tics_grouped[4]
+    # tics = config_tickers.DOW_30_TICKER
+    # tics = tics_176
+    # tics = tics_grouped[5]
+    
+    tics = []
+    for group in tics_grouped:
+        tics.append(short_name_sha256('_'.join(group)))
 
     total_date_range = f"_{config['train_start_date']}_{config['test_end_date']}"
 
@@ -156,7 +161,7 @@ if __name__ == "__main__":
                 raw_df = pd.read_csv(os.path.join(data_path, short_name_sha256('_'.join(tics)) + total_date_range + ".csv"))
             else:
                 raw_df = pd.read_csv(data_path)
-        raw_df = raw_df[["date", "tic", "close", "high", "low", "volume"]]
+        raw_df = raw_df[["date", "tic", "close", "high", "low", "volume"]].drop_duplicates()
         print('PROCESSING DATA')
         df = preprocess(raw_df, config['test_start_date'], config['test_end_date'])
         environment = PortfolioOptimizationEnv(
@@ -232,7 +237,7 @@ if __name__ == "__main__":
 
         # Train the model
         checkpoint_dir = f"checkpoints/{algo}/{now}"
-        checkpoint_callback = CheckpointCallback(save_freq=10000, save_path=checkpoint_dir, name_prefix=f"{algo}_model")
+        checkpoint_callback = CheckpointCallback(save_freq=20000, save_path=checkpoint_dir, name_prefix=f"{algo}_model")
         print('BEGIN TRAINING')
         trained_model = agent.train_model(model=model, tb_log_name=algo, total_timesteps=config['timesteps'], callback=checkpoint_callback)
 
