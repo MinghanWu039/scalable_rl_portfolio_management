@@ -5,7 +5,7 @@ from stable_baselines3 import SAC as model_class
 from finrl.meta.preprocessor.yahoodownloader import YahooDownloader
 
 from .data_downloader import get_data
-from .split import construct_stock_features, cluster_tic
+from ...agent.split import construct_stock_features, cluster_tic
 from .helper import short_name_sha256
 
 from finrl.meta.preprocessor.yahoodownloader import YahooDownloader

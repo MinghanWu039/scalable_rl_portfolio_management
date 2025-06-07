@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 
 from hierarchicalPortfolioOptEnv import hierarchicalPortfolioOptEnv
-from tic_config import tics_grouped
+from tics_config import tics_grouped
 hash_codes = ['8190e4275b4db67d', '8d1de7fe38361930']
 model_lst = [f'trained_models/sac/{h}' for h in hash_codes]
 ticker_grps = [tics_grouped[0], tics_grouped[2]]
