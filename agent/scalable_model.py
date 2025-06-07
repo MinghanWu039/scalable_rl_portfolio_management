@@ -6,7 +6,7 @@ from finrl.meta.preprocessor.yahoodownloader import YahooDownloader
 
 from .data_downloader import get_data
 from .split import construct_stock_features, cluster_tic
-from .helper import short_name_sha256
+from .helper import short_name_sha256, file_path
 
 from finrl.meta.preprocessor.yahoodownloader import YahooDownloader
 from finrl.meta.preprocessor.preprocessors import FeatureEngineer, data_split
@@ -51,8 +51,10 @@ class Scalable():
         self.tics_lst = tics_list
         self.sub_models = []
         for sub_tics in self.tics_lst:
-            model_path = Path(model_path) / f"{short_name_sha256('_'.join(sub_tics))}_{train_start_date}_{train_end_date}.zip"
+            model_path = file_path(model_path) Path(model_path) / f"{short_name_sha256('_'.join(sub_tics))}_{train_start_date}_{train_end_date}.zip"
             self.sub_models.append(model_class.load(model_path))
+
+    def train_sub(self, )
 
     def get_data():
 
