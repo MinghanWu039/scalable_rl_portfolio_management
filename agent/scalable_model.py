@@ -47,11 +47,11 @@ class Scalable():
             n_PCA_components, random_state
         )
 
-    def load_sub(self, tics_list, model_path, train_start_date, train_end_date):
+    def load_sub(self, tics_list, model_dir, train_start_date, train_end_date):
         self.tics_lst = tics_list
         self.sub_models = []
         for sub_tics in self.tics_lst:
-            model_path = file_path(model_path) Path(model_path) / f"{short_name_sha256('_'.join(sub_tics))}_{train_start_date}_{train_end_date}.zip"
+            model_path = file_path(model_dir, sub_tics, train_start_date, train_end_date, suffix='zip', type='r')
             self.sub_models.append(model_class.load(model_path))
 
     def train_sub(self, )
