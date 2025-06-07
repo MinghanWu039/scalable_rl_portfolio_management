@@ -34,7 +34,7 @@ class Scalable():
         if not model_path.is_file():
             self.train_sub()
 
-        # return baseline.load_model() TODO
+        return baseline.load_model(self.algo, model_path)
 
     def split(
             self, tics, start_date, end_date, 
@@ -57,10 +57,7 @@ class Scalable():
         )
 
 
-    def train_sub(self, tics, start_date, end_date, config, model_dir):
-        """
-        Train sub-models for each sub-tic.
-        """
+    def train_sub(self, algo, tics, start_date, end_date, config, model_dir):
         sub_data = self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(tics))]
         if sub_data.empty:
             print('No data available for the specified date range and tics. Fetching data...')
@@ -76,25 +73,7 @@ class Scalable():
         #TODO
         pass
 
-    def train(
-            self, tics, start_date, end_date, 
-            market_tic="S&P 500", rf_tic="^IRX",
-            avg_sub_model_size=30, allow_size_diff=5,
-            n_PCA_components=2, random_state=42
-        ):
-        self.tics = tics
-
-        if self.data is None or self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(tics))].empty:
-            self.data = get_data(self.tics, start_date, end_date)
-
-        if self.tics_lst is None or all(sub_tics in self.tics for lst in self.tics_lst for sub_tics in lst):
-            self.tics_list = self.split(
-                tics, start_date, end_date, 
-                market_tic, rf_tic,
-                avg_sub_model_size, allow_size_diff, 
-                n_PCA_components, random_state
-            )
-
+    def construct_manager_df(self, start_date, end_date):
         sub_data = []
         for i, sub_tics in enumerate(self.tics_lst):
             #TODO
@@ -116,6 +95,27 @@ class Scalable():
             )
         
         manager_data = pd.concat(sub_data, ignore_index=True)
+    
+    def train(
+            self, tics, start_date, end_date, 
+            market_tic="S&P 500", rf_tic="^IRX",
+            avg_sub_model_size=30, allow_size_diff=5,
+            n_PCA_components=2, random_state=42, config = None
+        ):
+        self.tics = tics
+
+        if self.data is None or self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(tics))].empty:
+            self.data = get_data(self.tics, start_date, end_date)
+
+        if self.tics_lst is None or all(sub_tics in self.tics for lst in self.tics_lst for sub_tics in lst):
+            self.tics_list = self.split(
+                tics, start_date, end_date, 
+                market_tic, rf_tic,
+                avg_sub_model_size, allow_size_diff, 
+                n_PCA_components, random_state
+            )
+
+        manager_data = self.construct_manager_df(self, start_date, end_date)
 
         #TODO train manager
         return self.manager_model
@@ -126,26 +126,7 @@ class Scalable():
         if self.data is None or self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(self.tics))].empty:
             self.data = get_data(self.tics, start_date, end_date)
 
-        sub_data = []
-        for sub_tics, sub_model in zip(self.tics_lst, self.sub_models):
-            #TODO
-            weights_df = ...
-            value_df = ...
-            tics_df = self.data[
-                (self.data['date'] >= start_date) & 
-                (self.data['date'] <= end_date) & 
-                (self.data['tic'].isin(sub_tics))
-            ].sort_values('date').reset_index(drop=True)
+        manager_data = self.construct_manager_df(self, start_date, end_date)
 
-            sub_data.append(
-                compute_sub_df(
-                    tics_df,
-                    weights_df,
-                    value_df,
-                    tics_group_name(sub_tics)
-                )
-            )
-        
-        manager_data = pd.concat(sub_data, ignore_index=True)
 
         # manager_test
