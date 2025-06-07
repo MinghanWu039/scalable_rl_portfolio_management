@@ -72,7 +72,7 @@ class Scalable():
 
         return baseline.train(self.config, model_dir, None, model_name, log_path=None, data_df=sub_data, algo=self.algo, device=self.device)
 
-    def test_sub(self, tics, start_date, end_date, backtest=True, wights=False, valuse=False):
+    def test_sub(self, tics, start_date, end_date, backtest=True, weights=False, valuse=False):
         results = {}
         if backtest:
             backtest_path = file_path(self.dir/'result/backtest', tics, start_date, end_date, suffix='csv', type='w')
@@ -80,11 +80,11 @@ class Scalable():
                 results['backtest'] = pd.read_csv(backtest_path)
                 backtest = False
 
-        if wights:
+        if weights:
             weights_path = file_path(self.dir/'result/weights', tics, start_date, end_date, suffix='csv', type='w')
             if weights_path.is_file():
                 results['weights'] = pd.read_csv(weights_path)
-                wights = False
+                weights = False
 
         if valuse:
             values_path = file_path(self.dir/'result/account_value', tics, start_date, end_date, suffix='csv', type='w')
@@ -92,7 +92,7 @@ class Scalable():
                 results['account_value'] = pd.read_csv(values_path)
                 valuse = False
 
-        if backtest or wights or valuse:
+        if backtest or weights or valuse:
             sub_data = self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(tics))]
             if sub_data.empty:
                 print('No data available for the specified date range and tics. Fetching data...')
@@ -103,7 +103,7 @@ class Scalable():
             model_name, _ = os.path.splitext(model_file)
             log_path = file_path(self.dir/'result', tics, start_date, end_date, suffix='csv', type='w')
             log_path, _ = os.path.split(log_path)
-            results.update(baseline.test(self.config, model_dir, None, model_name, log_path, data_df=sub_data, algo=self.algo, device=self.device, save_weights=wights, save_test=backtest, save_account_value=valuse))
+            results.update(baseline.test(self.config, model_dir, None, model_name, log_path, data_df=sub_data, algo=self.algo, device=self.device, save_weights=weights, save_test=backtest, save_account_value=valuse))
 
         if len(results) == 1:
             results = results[list(results.keys())[0]]
@@ -115,8 +115,8 @@ class Scalable():
     def construct_manager_df(self, start_date, end_date):
         sub_data = []
         for sub_tics in enumerate(self.tics_lst):
-            results = self.test_sub(self, sub_tics, start_date, end_date, backtest=False, wights=True, valuse=True)
-            weights_df = results['wights']
+            results = self.test_sub(self, sub_tics, start_date, end_date, backtest=False, weights=True, valuse=True)
+            weights_df = results['weights']
             value_df = results['account_value']
             tics_df = self.data[
                 (self.data['date'] >= start_date) & 
@@ -162,12 +162,11 @@ class Scalable():
         model_dir, model_file = os.path.split(total_path)
         model_name, _ = os.path.splitext(model_file)
         self.manager_model = baseline.train(self.config, model_dir, None, model_name, log_path=self.dir, data_df=manager_data, algo=self.algo, device=self.device)
-        
+
         return self.manager_model
         
-    def test(self, start_date, end_date):
+    def test(self, start_date, end_date, backtest=False, weights=True, valuse=True):
         assert self.manager_model is not None, "Manager model not trained yet."
-        assert self.tics_lst is not None, "Tics list not defined. Please run the split method first."
 
         if self.data is None or self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(self.tics))].empty:
             print('No data available for the specified date range and tics. Fetching data...')
@@ -177,10 +176,10 @@ class Scalable():
 
         tics_hashed = [tics_group_name(sub_tics) for sub_tics in self.tics_lst]
 
-        total_path = file_path(self.dir/'model', tics_hashed, start_date, end_date, suffix='zip', type='w')
+        total_path = file_path(self.dir/'model', tics_hashed, start_date, end_date, suffix='zip', type='r')
         model_dir, model_file = os.path.split(total_path)
         model_name, _ = os.path.splitext(model_file)
-        results = baseline.test(self.config, model_dir, None, model_name, log_path=self.dir, data_df=manager_data, algo=self.algo, device=self.device)
+        results = baseline.test(self.config, model_dir, None, model_name, log_path=self.dir, data_df=manager_data, algo=self.algo, device=self.device, save_weights=weights, save_test=backtest, save_account_value=valuse)
 
         if len(results) == 1:
             return results[list(results.keys())[0]]
