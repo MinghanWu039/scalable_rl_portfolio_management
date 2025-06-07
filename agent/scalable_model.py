@@ -1,21 +1,22 @@
 import pandas as pd
-from pathlib import Path
 from stable_baselines3 import SAC as model_class
 import os
 
 from .data_downloader import get_data, get_market_df, get_rf_rate
 from .split import construct_stock_features, cluster_tic
-from .helper import short_name_sha256, tics_group_name, file_path, compute_sub_df
+from .helper import tics_group_name, file_path, compute_sub_df
 
 from . import baseline
 
+
 class Scalable():
-    def __init__(self, super_env, sub_env, dir=None, device='cpu', algo='sac'):
+    def __init__(self, super_env, sub_env, config, dir=None, device='cpu', algo='sac', ):
         self.super_env = super_env
         self.sub_env = sub_env
         self.dir = dir
         self.device=device
         self.algo = algo
+        self.config = config
 
         self.tics = None
         self.tics_lst = None
@@ -32,7 +33,8 @@ class Scalable():
     def load_sub(self, tics, model_dir, train_start_date, train_end_date):
         model_path = file_path(model_dir, tics, train_start_date, train_end_date, suffix='zip', type='r')
         if not model_path.is_file():
-            self.train_sub()
+            print("Could not find model file, training sub-models...")
+            self.train_sub(tics, train_start_date, train_end_date, model_dir)
 
         return baseline.load_model(self.algo, model_path)
 
@@ -57,7 +59,7 @@ class Scalable():
         )
 
 
-    def train_sub(self, tics, start_date, end_date, config, model_dir):
+    def train_sub(self, tics, start_date, end_date, config, model_dir = 'models'):
         sub_data = self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(tics))]
         if sub_data.empty:
             print('No data available for the specified date range and tics. Fetching data...')
@@ -103,7 +105,7 @@ class Scalable():
                 )
             )
         
-        manager_data = pd.concat(sub_data, ignore_index=True)
+        return pd.concat(sub_data, ignore_index=True)
     
     def train(
             self, tics, start_date, end_date, 
