@@ -35,9 +35,9 @@ class Scalable():
 
     def split(
             self, tics, start_date, end_date, 
-            market_tic, rf_tic,
-            avg_sub_model_size, allow_size_diff, 
-            n_PCA_components, random_state
+            market_tic="S&P 500", rf_tic="^IRX",
+            avg_sub_model_size=30, allow_size_diff=5,
+            n_PCA_components=2, random_state=42
         ):
 
         market_df =  get_market_df(start_date, end_date, market_tic, dir = "data" if dir is None else f'{dir}/data')
@@ -54,10 +54,13 @@ class Scalable():
         )
 
 
-    def train_sub(self, start_date, end_date, config):
+    def train_sub(self, start_date, end_date, config, tics_list=None):
         """
         Train sub-models for each sub-tic.
         """
+        if self.tics_lst is None:
+            self.tics_lst = tics_list
+
         self.sub_models = []
         for sub_tics in self.tics_lst:
             sub_data = self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(sub_tics))]
@@ -87,7 +90,7 @@ class Scalable():
 
         self.tics = tics
         if self.tics_lst is None or all(sub_tics in self.tics for lst in self.tics_lst for sub_tics in lst):
-            self.split(
+            self.tics_list = self.split(
                 tics, start_date, end_date, 
                 market_tic, rf_tic,
                 avg_sub_model_size, allow_size_diff, 
@@ -102,7 +105,7 @@ class Scalable():
                 train_end_date=end_date
             ):
                 # TODO
-                self.train_sub(
+                self.sub_models = self.train_sub(
                     start_date, end_date, 
                     # config={
                     #     'algo': 'sac',

@@ -20,7 +20,7 @@ from finrl.plot import backtest_stats, backtest_plot, get_daily_return, get_base
 
 from finrl.config import INDICATORS
 from finrl import config_tickers
-from tic_config import tics_grouped, tics_176
+from tics_config import tics_grouped, tics_176
 
 # print(inspect.getfile(PortfolioOptimizationEnv))
 

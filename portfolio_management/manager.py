@@ -17,7 +17,7 @@ from finrl.plot import backtest_stats, backtest_plot, get_daily_return, get_base
 from hierarchicalPortfolioOptEnv import hierarchicalPortfolioOptEnv
 
 from finrl.config import INDICATORS
-from tic_config import tics_grouped
+from tics_config import tics_grouped
 
 class MyCheckpointCallback(CheckpointCallback):
     def __init__(self, save_freq, save_path, name_prefix="rl_model", verbose=0):
