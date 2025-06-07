@@ -1,7 +1,5 @@
 import pandas as pd
-from stable_baselines3 import SAC as model_class
 import os
-from pathlib import Path
 
 from .data_downloader import get_data, get_market_df, get_rf_rate
 from .split import construct_stock_features, cluster_tic
@@ -116,8 +114,8 @@ class Scalable():
         sub_data = []
         for sub_tics in enumerate(self.tics_lst):
             results = self.test_sub(self, sub_tics, start_date, end_date, backtest=False, weights=True, valuse=True)
-            weights_df = results['weights']
-            value_df = results['account_value']
+            weights_df = results['weights'].drop_duplicates()
+            value_df = results['account_value'].drop_duplicates()
             tics_df = self.data[
                 (self.data['date'] >= start_date) & 
                 (self.data['date'] <= end_date) & 
@@ -165,7 +163,7 @@ class Scalable():
 
         return self.manager_model
         
-    def test(self, start_date, end_date, backtest=False, weights=True, valuse=True):
+    def test(self, start_date, end_date, backtest=True, weights=False, valuse=False):
         assert self.manager_model is not None, "Manager model not trained yet."
 
         if self.data is None or self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(self.tics))].empty:

@@ -115,6 +115,27 @@ def compute_sub_df(
 
     return pd.DataFrame(records)
 
+def normalize_from(df: pd.DataFrame, start_date: str, end_date: str) -> pd.DataFrame:
+    df = df.copy()
+    df['date'] = pd.to_datetime(df['date'])
+    start = pd.to_datetime(start_date)
+    end   = pd.to_datetime(end_date)
+
+    # 1. 筛选并排序
+    mask = (df['date'] >= start) & (df['date'] <= end)
+    filtered = df.loc[mask].sort_values('date')
+
+    # 2. 如果没有在 start_date 之后（含）及 end_date 之前的记录，报错
+    if filtered.empty:
+        raise ValueError(f"没有找到日期区间 {start_date} 到 {end_date} 的记录")
+
+    # 3. 取第一个日期的 account_value 作为 v0
+    v0 = filtered.iloc[0]['account_value']
+
+    # 4. 归一化
+    filtered['account_value'] = filtered['account_value'] / v0
+
+    return filtered
 
 import plotly.graph_objects as go
 import plotly.express as px
@@ -225,3 +246,29 @@ def plot_account_value_comparison(
     )
 
     return fig
+
+def plot(df_baseline, dfs, df_manager, test_start_date_s, test_end_date_s):
+
+    test_start_date = pd.to_datetime(test_start_date_s)
+    test_end_date = pd.to_datetime(test_end_date_s)
+
+    df_baseline_normalized = normalize_from(df_baseline, test_start_date, test_end_date)
+    dfs_normalized = [normalize_from(df, test_start_date, test_end_date) for df in dfs]
+    df_manager_normalized = normalize_from(df_manager, test_start_date, test_end_date)
+
+    fig1 = plot_account_value_comparison_plotly(
+        models=dfs_normalized,
+        model_labels=[f"Pool {i+1}" for i in range(len(dfs_normalized))],
+        baseline=df_baseline_normalized,
+        baseline_label="Dow Jones",
+        title=f"Pool Return Comparison (since {test_start_date_s} to {test_end_date_s})"
+        )
+    fig2 = plot_account_value_comparison_plotly(
+        baseline=df_baseline_normalized,
+        baseline_label="Dow Jones",
+        manager=df_manager_normalized,
+        manager_lable="Manager",
+        title=f"Manager Return Rate (since {test_start_date_s} to {test_end_date_s})"
+    )
+
+    return fig1, fig2
