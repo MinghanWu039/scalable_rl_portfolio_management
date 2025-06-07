@@ -62,6 +62,7 @@ class Scalable():
             sub_data = self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(sub_tics))]
             if sub_data.empty:
                 self.data = get_data(self.tics, start_date, end_date)
+                sub_data = self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(sub_tics))]
             
             # TODO
             # train(config, model_path, data_path, model_name,
@@ -138,7 +139,7 @@ class Scalable():
     def test(self, start_date, end_date):
         assert self.manager_model is not None, "Manager model not trained yet."
 
-        if self.data is None or self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(tics))].empty:
+        if self.data is None or self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(self.tics))].empty:
             self.data = get_data(self.tics, start_date, end_date)
 
         sub_data = []
@@ -164,4 +165,3 @@ class Scalable():
         manager_data = pd.concat(sub_data, ignore_index=True)
 
         # manager_test
-        
