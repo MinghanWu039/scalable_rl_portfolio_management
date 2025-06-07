@@ -2,8 +2,6 @@ import sys
 import pandas as pd
 import numpy as np
 
-sys.path.append("/home/miw039/scalable_rl_portfolio_management/FinRL-dev")
-
 from hierarchicalPortfolioOptEnv import hierarchicalPortfolioOptEnv
 from tic_config import tics_grouped
 hash_codes = ['8190e4275b4db67d', '8d1de7fe38361930']
