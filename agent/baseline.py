@@ -20,6 +20,25 @@ from finrl.config import INDICATORS
 def load_yaml(configpath):
     with open(configpath, 'r') as f:
         return yaml.safe_load(f)
+    
+def load_model(algo, model_path, sb_env=None, model_params=None):
+    assert model_path is not None, "Model path must be provided for retraining"
+    if algo == "ppo":
+        from stable_baselines3 import PPO as model_class
+    elif algo == "sac":
+        from stable_baselines3 import SAC as model_class
+    elif algo == "a2c":
+        from stable_baselines3 import A2C as model_class
+    elif algo == "ddpg":
+        from stable_baselines3 import DDPG as model_class
+    elif algo == "td3":
+        from stable_baselines3 import TD3 as model_class
+    else:
+        raise ValueError(f"Unsupported algorithm: {algo}")
+    if sb_env is not None:
+        return model_class.load(os.path.join(model_path, model_name + ".zip"), env=sb_env, **model_params)
+    else:
+        return model_class.load(os.path.join(model_path, model_name + ".zip"), **model_params)
 
 def preprocess(df, start_date, end_date):
     fe = FeatureEngineer(
@@ -104,20 +123,7 @@ def train(config, model_path, data_path, model_name, log_path,
     model_params = config.get("model", {})
     model_params['device'] = device
     if retrain:
-        assert model_path is not None, "Model path must be provided for retraining"
-        if algo == "ppo":
-            from stable_baselines3 import PPO as model_class
-        elif algo == "sac":
-            from stable_baselines3 import SAC as model_class
-        elif algo == "a2c":
-            from stable_baselines3 import A2C as model_class
-        elif algo == "ddpg":
-            from stable_baselines3 import DDPG as model_class
-        elif algo == "td3":
-            from stable_baselines3 import TD3 as model_class
-        else:
-            raise ValueError(f"Unsupported algorithm: {algo}")
-        model = model_class.load(os.path.join(model_path, model_name + ".zip"), env=sb_env, **model_params)
+        model = load_model(algo, os.path.join(model_path, model_name + ".zip"), sb_env, model_params)
     else:
         model = agent.get_model(algo, model_kwargs=model_params)
 
@@ -153,7 +159,7 @@ def test(config, model_path, data_path, model_name, log_path,
     else:
         raise ValueError(f"Unsupported algorithm: {algo}")
     
-    trained_model = model_class.load(os.path.join(model_path, model_name + ".zip"), device=device)
+    trained_model = load_model(algo, os.path.join(model_path, model_name + ".zip"), sb_env=None, model_params={'device': device})
     raw_df = pd.read_csv(data_path)
     raw_df = raw_df[["date", "tic", "close", "high", "low", "volume"]].drop_duplicates()
 
