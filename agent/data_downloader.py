@@ -3,15 +3,12 @@ import sys
 from finrl.meta.preprocessor.yahoodownloader import YahooDownloader
 from pathlib import Path
 import pandas as pd
-import hashlib
 
 market_tics = {
     "S&P 500": "^GSPC",
     "DJIA": "^DJI",
     "NASDAQ": "^IXIC"
 }
-
-
 
 def get_market_df(start, end, market="S&P 500"):
     assert market in market_tics, f"market `{market}` not avaliable"
@@ -29,13 +26,6 @@ def get_rf_rate(start, end, tic="^IRX"):
     df['rf_rate'] = df['close'] / 100.0
     return df[['date', 'rf_rate']]
 
-def short_name_sha256(s: str, length: int = 16) -> str:
-    """
-    对字符串 s 计算 SHA-256，取前 length 个 hex 字符作为短名。
-    默认取16字符（即 64bit），碰撞风险极低，且足够短。
-    """
-    h = hashlib.sha256(s.encode('utf-8')).hexdigest()
-    return h[:length]
 
 def get_data(tics, start, end, market_tic, rf_tic):
     tics_data_file = Path("data") / f"{short_name_sha256('_'.join(tics))}_{start}_{end}.csv"

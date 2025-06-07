@@ -1,3 +1,15 @@
+import hashlib
+
+
+def short_name_sha256(s: str, length: int = 16) -> str:
+    """
+    对字符串 s 计算 SHA-256，取前 length 个 hex 字符作为短名。
+    默认取16字符（即 64bit），碰撞风险极低，且足够短。
+    """
+    h = hashlib.sha256(s.encode('utf-8')).hexdigest()
+    return h[:length]
+
+
 def compute_portfolio_ohlcv_with_values(
     tics_df: pd.DataFrame,
     weights_df: pd.DataFrame,
