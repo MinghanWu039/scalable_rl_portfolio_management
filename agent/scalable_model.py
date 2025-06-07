@@ -115,8 +115,14 @@ class Scalable():
                     # }
                 )
 
+        weights_dfs, weights_dfs = test_sub(
+            start_date, end_date, 
+            tics_list=self.tics_lst, 
+            sub_models=self.sub_models
+        )
+
         sub_data = []
-        for sub_tics, sub_model in zip(self.tics_lst, self.sub_models):
+        for i, sub_tics, sub_model in enumerate(zip(self.tics_lst, self.sub_models)):
             #TODO
             weights_df = ...
             value_df = ...
