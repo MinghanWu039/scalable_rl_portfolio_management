@@ -27,7 +27,7 @@ class Scalable():
         self.tics_lst = tics_lst
 
     def load_sub(self, algo, tics, model_dir, train_start_date, train_end_date):
-        model_path = file_path(model_dir, tics, train_start_date, train_end_date, suffix='zip', type='r')
+        model_path = file_path(model_dir / 'sub', tics, train_start_date, train_end_date, suffix='zip', type='r')
         if not model_path.is_file():
             self.train_sub()
 
