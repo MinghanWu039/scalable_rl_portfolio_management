@@ -74,7 +74,7 @@ class Scalable():
 
             # self.sub_models.append(sub_model)
 
-    def test_sub(self, start_date, end_date):
+    def test_sub(self, start_date, end_date, tics_list=None):
         #TODO
         pass
 
