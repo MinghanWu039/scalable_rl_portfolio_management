@@ -6,6 +6,8 @@ from .data_downloader import get_data, get_market_df, get_rf_rate
 from .split import construct_stock_features, cluster_tic
 from .helper import short_name_sha256, tics_group_name, file_path, compute_sub_df
 
+from . import baseline
+
 class Scalable():
     def __init__(self, super_env, sub_env, dir=None):
         self.super_env = super_env
@@ -16,22 +18,20 @@ class Scalable():
         self.tics_lst = None
         self.data = None
 
-        self.sub_models = None
         self.manager_model = None
 
     def load_data(self, data):
         self.data = data
 
-    def load_sub(self, tics_list, model_dir, train_start_date, train_end_date):
-        self.tics_lst = tics_list
-        self.sub_models = []
-        for sub_tics in self.tics_lst:
-            model_path = file_path(model_dir, sub_tics, train_start_date, train_end_date, suffix='zip', type='r')
-            if not model_path.is_file():
-                return False
-            self.sub_models.append(model_class.load(model_path))
+    def load_grouped_tics(self, tics_lst):
+        self.tics_lst = tics_lst
 
-        return True
+    def load_sub(self, tics, model_dir, train_start_date, train_end_date):
+        model_path = file_path(model_dir, tics, train_start_date, train_end_date, suffix='zip', type='r')
+        if not model_path.is_file():
+            self.train_sub()
+
+        # return baseline.load_model() TODO
 
     def split(
             self, tics, start_date, end_date, 
@@ -54,25 +54,20 @@ class Scalable():
         )
 
 
-    def train_sub(self, start_date, end_date, config, tics_list=None):
+    def train_sub(self, tics, start_date, end_date, config):
         """
         Train sub-models for each sub-tic.
         """
-        if self.tics_lst is None:
-            self.tics_lst = tics_list
+        sub_data = self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(tics))]
+        if sub_data.empty:
+            self.data = get_data(self.tics, start_date, end_date)
+            sub_data = self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(tics))]
+        
+        # TODO
+        # train(config, model_path, data_path, model_name,
+        #     algo='sac', retrain=False, features=['close', 'high', 'low'], device='cpu')
 
-        self.sub_models = []
-        for sub_tics in self.tics_lst:
-            sub_data = self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(sub_tics))]
-            if sub_data.empty:
-                self.data = get_data(self.tics, start_date, end_date)
-                sub_data = self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(sub_tics))]
-            
-            # TODO
-            # train(config, model_path, data_path, model_name,
-            #     algo='sac', retrain=False, features=['close', 'high', 'low'], device='cpu')
-
-            # self.sub_models.append(sub_model)
+        # self.sub_models.append(sub_model)
 
     def test_sub(self, start_date, end_date, tics_list=None):
         #TODO
@@ -84,11 +79,11 @@ class Scalable():
             avg_sub_model_size=30, allow_size_diff=5,
             n_PCA_components=2, random_state=42
         ):
+        self.tics = tics
 
         if self.data is None or self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(tics))].empty:
-            self.data = get_data(tics, start_date, end_date)
+            self.data = get_data(self.tics, start_date, end_date)
 
-        self.tics = tics
         if self.tics_lst is None or all(sub_tics in self.tics for lst in self.tics_lst for sub_tics in lst):
             self.tics_list = self.split(
                 tics, start_date, end_date, 
@@ -97,32 +92,8 @@ class Scalable():
                 n_PCA_components, random_state
             )
 
-        if self.sub_models is None or len(self.sub_models) != len(self.tics_lst):
-            if not self.load_sub(
-                self.tics_lst, 
-                model_dir="models" if dir is None else f'{dir}/models', 
-                train_start_date=start_date, 
-                train_end_date=end_date
-            ):
-                # TODO
-                self.sub_models = self.train_sub(
-                    start_date, end_date, 
-                    # config={
-                    #     'algo': 'sac',
-                    #     'total_timesteps': 50000,
-                    #     'features': ['close', 'high', 'low'],
-                    #     'device': 'cpu'
-                    # }
-                )
-
-        weights_dfs, weights_dfs = test_sub(
-            start_date, end_date, 
-            tics_list=self.tics_lst, 
-            sub_models=self.sub_models
-        )
-
         sub_data = []
-        for i, sub_tics, sub_model in enumerate(zip(self.tics_lst, self.sub_models)):
+        for i, sub_tics in enumerate(self.tics_lst):
             #TODO
             weights_df = ...
             value_df = ...
