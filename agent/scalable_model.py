@@ -167,6 +167,7 @@ class Scalable():
         
     def test(self, start_date, end_date):
         assert self.manager_model is not None, "Manager model not trained yet."
+        assert self.tics_lst is not None, "Tics list not defined. Please run the split method first."
 
         if self.data is None or self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(self.tics))].empty:
             print('No data available for the specified date range and tics. Fetching data...')
@@ -174,5 +175,13 @@ class Scalable():
 
         manager_data = self.construct_manager_df(self, start_date, end_date)
 
+        tics_hashed = [tics_group_name(sub_tics) for sub_tics in self.tics_lst]
 
-        # manager_test
+        total_path = file_path(self.dir/'model', tics_hashed, start_date, end_date, suffix='zip', type='w')
+        model_dir, model_file = os.path.split(total_path)
+        model_name, _ = os.path.splitext(model_file)
+        results = baseline.test(self.config, model_dir, None, model_name, log_path=self.dir, data_df=manager_data, algo=self.algo, device=self.device)
+
+        if len(results) == 1:
+            return results[list(results.keys())[0]]
+        return results
