@@ -54,10 +54,7 @@ class Scalable():
         )
 
 
-    def train_sub(self, tics, start_date, end_date, config):
-        """
-        Train sub-models for each sub-tic.
-        """
+    def train_sub(self, algo, tics, start_date, end_date, config):
         sub_data = self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(tics))]
         if sub_data.empty:
             self.data = get_data(self.tics, start_date, end_date)
@@ -69,7 +66,7 @@ class Scalable():
 
         # self.sub_models.append(sub_model)
 
-    def test_sub(self, start_date, end_date, tics_list=None):
+    def test_sub(self, algo, tics, start_date, end_date):
         #TODO
         pass
 
@@ -77,7 +74,7 @@ class Scalable():
             self, tics, start_date, end_date, 
             market_tic="S&P 500", rf_tic="^IRX",
             avg_sub_model_size=30, allow_size_diff=5,
-            n_PCA_components=2, random_state=42
+            n_PCA_components=2, random_state=42, config = None
         ):
         self.tics = tics
 
