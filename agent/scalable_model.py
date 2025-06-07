@@ -59,7 +59,7 @@ class Scalable():
         )
 
 
-    def train_sub(self, tics, start_date, end_date, config, model_dir = 'models'):
+    def train_sub(self, tics, start_date, end_date, model_dir = 'models'):
         sub_data = self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(tics))]
         if sub_data.empty:
             print('No data available for the specified date range and tics. Fetching data...')
@@ -70,7 +70,7 @@ class Scalable():
         model_dir, model_file = os.path.split(total_path)
         model_name, _ = os.path.splitext(model_file)
 
-        return baseline.train(config, model_dir, None, model_name, log_path=None, data_df=sub_data, algo=self.algo, device=self.device)
+        return baseline.train(self.config, model_dir, None, model_name, log_path=None, data_df=sub_data, algo=self.algo, device=self.device)
 
     def test_sub(self, tics, start_date, end_date, backtest=True, wights=False, valuse=False):
         results = {}
