@@ -70,33 +70,52 @@ class Scalable():
         model_name, _ = os.path.splitext(model_file)
         baseline.train(config, model_dir, None, model_name, log_path=None, data_df=sub_data, algo=self.algo, device=self.device)
 
-    def test_sub(self, tics, start_date, end_date, dir, backtest=True, wights=False, valuse=False):
+    def test_sub(self, tics, start_date, end_date, backtest=True, wights=False, valuse=False):
         results = {}
         if backtest:
-            backtest_path = file_path(dir/'backtest', tics, start_date, end_date, suffix='csv', type='w')
-            results['backtest'] = pd.read_csv
+            backtest_path = file_path(self.dir/'result/backtest', tics, start_date, end_date, suffix='csv', type='w')
+            if backtest_path.is_file():
+                results['backtest'] = pd.read_csv(backtest_path)
+                backtest = False
 
+        if wights:
+            weights_path = file_path(self.dir/'result/weights', tics, start_date, end_date, suffix='csv', type='w')
+            if weights_path.is_file():
+                results['weights'] = pd.read_csv(weights_path)
+                wights = False
 
-        sub_data = self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(tics))]
-        if sub_data.empty:
-            print('No data available for the specified date range and tics. Fetching data...')
-            self.data = get_data(self.tics, start_date, end_date)
+        if valuse:
+            values_path = file_path(self.dir/'result/account_value', tics, start_date, end_date, suffix='csv', type='w')
+            if values_path.is_file():
+                results['account_value'] = pd.read_csv(values_path)
+                valuse = False
+
+        if backtest or wights or valuse:
             sub_data = self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(tics))]
-        total_path = file_path(dir/'models/sub', tics, start_date, end_date, suffix='zip', type='r')
-        model_dir, model_file = os.path.split(total_path)
-        model_name, _ = os.path.splitext(model_file)
-        log_path = file_path(dir/'result', tics, start_date, end_date, suffix='csv', type='w')
-        log_path, _ = os.path.split(log_path)
-        results = baseline.test(self.config, model_dir, None, model_name, log_path, data_df=sub_data, algo=self.algo, device=self.device)
+            if sub_data.empty:
+                print('No data available for the specified date range and tics. Fetching data...')
+                self.data = get_data(self.tics, start_date, end_date)
+                sub_data = self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(tics))]
+            total_path = file_path(self.dir/'models/sub', tics, start_date, end_date, suffix='zip', type='r')
+            model_dir, model_file = os.path.split(total_path)
+            model_name, _ = os.path.splitext(model_file)
+            log_path = file_path(self.dir/'result', tics, start_date, end_date, suffix='csv', type='w')
+            log_path, _ = os.path.split(log_path)
+            results.update(baseline.test(self.config, model_dir, None, model_name, log_path, data_df=sub_data, algo=self.algo, device=self.device, save_weights=wights, save_test=backtest, save_account_value=valuse))
+
+        if len(results) == 1:
+            results = results[list(results.keys())[0]]
+
+        return results
 
         
 
     def construct_manager_df(self, start_date, end_date):
         sub_data = []
-        for i, sub_tics in enumerate(self.tics_lst):
-            #TODO
-            weights_df = ...
-            value_df = ...
+        for sub_tics in enumerate(self.tics_lst):
+            results = self.test_sub(self, sub_tics, start_date, end_date, backtest=False, wights=True, valuse=True)
+            weights_df = results['wights']
+            value_df = results['account_value']
             tics_df = self.data[
                 (self.data['date'] >= start_date) & 
                 (self.data['date'] <= end_date) & 
