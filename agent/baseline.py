@@ -63,7 +63,7 @@ def preprocess(df, start_date, end_date):
     processed_full = processed_full.fillna(0)
     return processed_full
 
-def backtesting(env_test, model, log_path, save_weights=True, save_test=True, save_account_value=True):
+def backtesting(env_test, model, log_path):
     print("=" * 10 + "Get Backtest Stats" + "=" * 10)
     now = datetime.now().strftime('%Y%m%d-%Hh%M')
     # Get model states
@@ -95,16 +95,10 @@ def backtesting(env_test, model, log_path, save_weights=True, save_test=True, sa
     baseline_stats = pd.DataFrame(baseline_stats)
     
     output = {}
-    if save_test:
-        merged = model_stats.merge(baseline_stats, left_index=True, right_index=True, suffixes=('_model', '_baseline'))
-        output['backtest'] = merged
-        # merged.to_csv(os.path.join(log_path, 'backtest', f'backtest_stats_{now}.csv'))
-    if save_weights:
-        # pd.DataFrame({'dates': dates, 'weights': weight_history}).to_csv(os.path.join(log_path, 'weights', f'weights_{now}.csv'), index=False)
-        output['weights'] = pd.DataFrame({'date': dates, 'weights': weight_history})
-    if save_account_value:
-        # df_account_value.to_csv(os.path.join(log_path, 'account_values', f'account_values_{now}.csv'), index=False)
-        output['account_value'] = df_account_value
+    merged = model_stats.merge(baseline_stats, left_index=True, right_index=True, suffixes=('_model', '_baseline'))
+    output['backtest'] = merged
+    output['weights'] = pd.DataFrame({'date': dates, 'weights': weight_history})
+    output['account_value'] = df_account_value
     return output
 
 def train(config, model_path, data_path, model_name, log_path=None,
@@ -161,7 +155,7 @@ def train(config, model_path, data_path, model_name, log_path=None,
 
 def test(config, model_path, data_path, model_name, log_path,
          data_df=None, algo='sac', features=['close', 'high', 'low'], device='cpu',
-         save_weights=True, save_test=True, save_account_value=True):
+         save_weights=True, save_backtest=True, save_account_value=True):
     if algo == "ppo":
         from stable_baselines3 import PPO as model_class
     elif algo == "sac":
@@ -196,13 +190,13 @@ def test(config, model_path, data_path, model_name, log_path,
         features=features) # ,'close_30_sma', 'close_60_sma', 'volume'
     result = backtesting(environment, trained_model, log_path, save_account_value=save_account_value,
                         save_weights=save_weights, save_test=save_test)
-    if 'backtest' in result:
+    if save_backtest:
         result['backtest'].to_csv(os.path.join(log_path, 'backtest', f'backtest_{model_name}.csv'))
         print('Backtest results saved to:', os.path.join(log_path, 'backtest', f'backtest_{model_name}.csv'))
-    if 'weights' in result:
+    if save_weights:
         result['weights'].to_csv(os.path.join(log_path, 'weights', f'weights_{model_name}.csv'), index=False)
         print('Weights saved to:', os.path.join(log_path, 'weights', f'weights_{model_name}.csv'))
-    if 'account_value' in result:
+    if save_account_value:
         result['account_value'].to_csv(os.path.join(log_path, 'account_values', f'account_values_{model_name}.csv'), index=False)
         print('Account value saved to:', os.path.join(log_path, 'account_values', f'account_values_{model_name}.csv'))
     return result
