@@ -21,8 +21,8 @@ def load_yaml(configpath):
     with open(configpath, 'r') as f:
         return yaml.safe_load(f)
     
-def load_model(algo, model_path, sb_env=None, model_params=None):
-    assert model_path is not None, "Model path must be provided for retraining"
+def load_model(algo, path, sb_env=None, model_params=None):
+    assert path is not None, "Model path must be provided for retraining"
     if algo == "ppo":
         from stable_baselines3 import PPO as model_class
     elif algo == "sac":
@@ -36,9 +36,9 @@ def load_model(algo, model_path, sb_env=None, model_params=None):
     else:
         raise ValueError(f"Unsupported algorithm: {algo}")
     if sb_env is not None:
-        return model_class.load(os.path.join(model_path, model_name + ".zip"), env=sb_env, **model_params)
+        return model_class.load(path, env=sb_env, **model_params)
     else:
-        return model_class.load(os.path.join(model_path, model_name + ".zip"), **model_params)
+        return model_class.load(path, **model_params)
 
 def preprocess(df, start_date, end_date):
     fe = FeatureEngineer(
