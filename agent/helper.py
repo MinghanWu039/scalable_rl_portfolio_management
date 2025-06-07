@@ -9,14 +9,15 @@ def short_name_sha256(s: str, length: int = 16) -> str:
     h = hashlib.sha256(s.encode('utf-8')).hexdigest()
     return h[:length]
 
-def file_path(dir, tics, start_date, end_date, suffix='csv'):
+def file_path(dir, tics, start_date, end_date, suffix='csv', type='w'):
     """
     生成数据文件路径，格式为：
     <dir>/<short_name>_<start_date>_<end_date>.<suffix>
     其中 short_name 是 tics 的 SHA-256 哈希前16位。
     """
     p = Path(dir) / f"{short_name_sha256('_'.join(tics))}_{start_date}_{end_date}.{suffix}"
-    p.mkdir(parents=True, exist_ok=True)
+    if type == 'w':
+        p.mkdir(parents=True, exist_ok=True)
     return p
 
 def compute_portfolio_ohlcv_with_values(
