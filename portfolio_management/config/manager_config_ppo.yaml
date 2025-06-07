@@ -1,0 +1,21 @@
+train_start_date: '2009-01-01'
+train_end_date: '2020-07-01'
+test_start_date: '2020-07-01'
+test_end_date: '2021-10-01'
+initial_amount: 1000000
+reward_scaling: 1e-4
+timesteps: 100000
+
+model:
+  learning_rate: 0.0001
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.01
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+
+source:
+  hash_codes: '8190e4275b4db67d 8d1de7fe38361930'
+  ticker_grp_idx: '0 2'
