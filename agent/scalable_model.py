@@ -1,6 +1,7 @@
 import pandas as pd
 from stable_baselines3 import SAC as model_class
 import os
+from pathlib import Path
 
 from .data_downloader import get_data, get_market_df, get_rf_rate
 from .split import construct_stock_features, cluster_tic
@@ -10,9 +11,7 @@ from . import baseline
 
 
 class Scalable():
-    def __init__(self, super_env, sub_env, config, dir=None, device='cpu', algo='sac', ):
-        self.super_env = super_env
-        self.sub_env = sub_env
+    def __init__(self, config, dir=None, device='cpu', algo='sac', ):
         self.dir = dir
         self.device=device
         self.algo = algo
@@ -71,18 +70,26 @@ class Scalable():
         model_name, _ = os.path.splitext(model_file)
         baseline.train(config, model_dir, None, model_name, log_path=None, data_df=sub_data, algo=self.algo, device=self.device)
 
-    def test_sub(self, tics, start_date, end_date, model_dir):
+    def test_sub(self, tics, start_date, end_date, dir, backtest=True, wights=False, valuse=False):
+        results = {}
+        if backtest:
+            backtest_path = file_path(dir/'backtest', tics, start_date, end_date, suffix='csv', type='w')
+            results['backtest'] = pd.read_csv
+
+
         sub_data = self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(tics))]
         if sub_data.empty:
             print('No data available for the specified date range and tics. Fetching data...')
             self.data = get_data(self.tics, start_date, end_date)
             sub_data = self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(tics))]
-        total_path = file_path(model_dir, tics, start_date, end_date, suffix='zip', type='r')
+        total_path = file_path(dir/'models/sub', tics, start_date, end_date, suffix='zip', type='r')
         model_dir, model_file = os.path.split(total_path)
         model_name, _ = os.path.splitext(model_file)
-        log_path = file_path(model_dir, tics, start_date, end_date, suffix='csv', type='w')
+        log_path = file_path(dir/'result', tics, start_date, end_date, suffix='csv', type='w')
         log_path, _ = os.path.split(log_path)
-        baseline.test(self.config, model_dir, None, model_name, log_path, data_df=sub_data, algo=self.algo, device=self.device)
+        results = baseline.test(self.config, model_dir, None, model_name, log_path, data_df=sub_data, algo=self.algo, device=self.device)
+
+        
 
     def construct_manager_df(self, start_date, end_date):
         sub_data = []
