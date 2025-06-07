@@ -4,8 +4,9 @@ from stable_baselines3 import SAC as model_class
 
 from finrl.meta.preprocessor.yahoodownloader import YahooDownloader
 
-from .data_downloader import get_data, short_name_sha256
+from .data_downloader import get_data
 from .split import construct_stock_features, cluster_tic
+from .helper import short_name_sha256
 
 from finrl.meta.preprocessor.yahoodownloader import YahooDownloader
 from finrl.meta.preprocessor.preprocessors import FeatureEngineer, data_split
@@ -46,12 +47,22 @@ class Scalable():
             n_PCA_components, random_state
         )
 
+    def load_sub(self, tics_list, model_path, train_start_date, train_end_date):
+        self.tics_lst = tics_list
+        self.sub_models = []
+        for sub_tics in self.tics_lst:
+            model_path = Path(model_path) / f"{short_name_sha256('_'.join(sub_tics))}_{train_start_date}_{train_end_date}.zip"
+            self.sub_models.append(model_class.load(model_path))
+
+
     def train(
             self, tics, start_date, end_date, 
             market_tic="S&P 500", rf_tic="^IRX",
             avg_sub_model_size=30, allow_size_diff=5,
             n_PCA_components=2, random_state=42
         ):
+
+        
         self.split(
             tics, start_date, end_date, 
             market_tic, rf_tic,
@@ -59,12 +70,7 @@ class Scalable():
             n_PCA_components, random_state
         )
 
-        self.sub_models = []
-        for sub_tics in self.tics_lst:
-            model_path = Path('model') / f"{short_name_sha256('_'.join(tics))}_{start_date}_{end_date}.zip"
-            if model_path.is_file():
-                self.sub_models.append(model_class.load(model_path))
-
+        
 
 
     # def train_sub(algo, env_train, total_timesteps=50000):

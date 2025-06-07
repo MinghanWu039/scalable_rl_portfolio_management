@@ -1,6 +1,5 @@
 import hashlib
 
-
 def short_name_sha256(s: str, length: int = 16) -> str:
     """
     对字符串 s 计算 SHA-256，取前 length 个 hex 字符作为短名。
