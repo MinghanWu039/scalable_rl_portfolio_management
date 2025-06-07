@@ -1,6 +1,7 @@
 import pandas as pd
 from pathlib import Path
 from stable_baselines3 import SAC as model_class
+import os
 
 from .data_downloader import get_data, get_market_df, get_rf_rate
 from .split import construct_stock_features, cluster_tic
@@ -9,10 +10,12 @@ from .helper import short_name_sha256, tics_group_name, file_path, compute_sub_d
 from . import baseline
 
 class Scalable():
-    def __init__(self, super_env, sub_env, dir=None):
+    def __init__(self, super_env, sub_env, dir=None, device='cpu', algo='sac'):
         self.super_env = super_env
         self.sub_env = sub_env
         self.dir = dir
+        self.device=device
+        self.algo = algo
 
         self.tics = None
         self.tics_lst = None
@@ -54,20 +57,20 @@ class Scalable():
         )
 
 
-    def train_sub(self, tics, start_date, end_date, config):
+    def train_sub(self, tics, start_date, end_date, config, model_dir):
         """
         Train sub-models for each sub-tic.
         """
         sub_data = self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(tics))]
         if sub_data.empty:
+            print('No data available for the specified date range and tics. Fetching data...')
             self.data = get_data(self.tics, start_date, end_date)
             sub_data = self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(tics))]
         
-        # TODO
-        # train(config, model_path, data_path, model_name,
-        #     algo='sac', retrain=False, features=['close', 'high', 'low'], device='cpu')
-
-        # self.sub_models.append(sub_model)
+        total_path = file_path(model_dir, tics, start_date, end_date, suffix='zip', type='r')
+        model_dir, model_file = os.path.split(total_path)
+        model_name, _ = os.path.splitext(model_file)
+        baseline.train(config, model_dir, None, model_name, log_path=None, algo=self.algo, device=self.device)
 
     def test_sub(self, start_date, end_date, tics_list=None):
         #TODO

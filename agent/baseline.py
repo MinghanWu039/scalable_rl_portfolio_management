@@ -101,10 +101,16 @@ def backtesting(env_test, model, log_path, save_weights=True, save_test=True):
     if save_weights:
         pd.DataFrame({'dates': dates, 'weights': weight_history}).to_csv(os.path.join(log_path, 'weights', f'weights_{now}.csv'), index=False)
 
-def train(config, model_path, data_path, model_name, log_path,
-          algo='sac', retrain=False, features=['close', 'high', 'low'], device='cpu'):
-    raw_df = pd.read_csv(data_path)
-    raw_df = raw_df[["date", "tic", "close", "high", "low", "volume"]]
+def train(config, model_path, data_path, model_name, log_path=None,
+          data_df=None, algo='sac', retrain=False, features=['close', 'high', 'low'], device='cpu'):
+    if data_path is not None:
+        assert data_df is None, "data_df must not be provided if data_path is not None"
+        raw_df = pd.read_csv(data_path)
+        raw_df = raw_df[["date", "tic", "close", "high", "low", "volume"]]
+    else:
+        assert data_df is not None, "data_df must be provided if data_path is None"
+        raw_df = data_df.copy()
+        raw_df = raw_df[["date", "tic", "close", "high", "low", "volume"]]
 
     print('PROCESSING DATA')
     df = preprocess(raw_df, config['train_start_date'], config['train_end_date'])
@@ -127,25 +133,28 @@ def train(config, model_path, data_path, model_name, log_path,
     else:
         model = agent.get_model(algo, model_kwargs=model_params)
 
-    # set up logger
-    now = datetime.now().strftime('%Y%m%d-%Hh%M')
-    tmp_path = f'{log_path}/log'
-    new_logger = configure(tmp_path, ["stdout", "csv", "tensorboard"])
-    # Set new logger
-    model.set_logger(new_logger)
+    if log_path is not None:
+        # set up logger
+        tmp_path = f'{log_path}/log'
+        new_logger = configure(tmp_path, ["stdout", "csv", "tensorboard"])
+        # Set new logger
+        model.set_logger(new_logger)
 
-    # Train the model
-    checkpoint_dir = f"{log_path}/checkpoint"
-    checkpoint_callback = CheckpointCallback(save_freq=20000, save_path=checkpoint_dir, name_prefix=model_name)
-    print('BEGIN TRAINING')
-    trained_model = agent.train_model(model=model, tb_log_name=algo, total_timesteps=config['timesteps'], callback=checkpoint_callback)
+        # Train the model
+        checkpoint_dir = f"{log_path}/checkpoint"
+        checkpoint_callback = CheckpointCallback(save_freq=20000, save_path=checkpoint_dir, name_prefix=model_name)
+        print('BEGIN TRAINING')
+        trained_model = agent.train_model(model=model, tb_log_name=algo, total_timesteps=config['timesteps'], callback=checkpoint_callback)
+    else:
+        print('BEGIN TRAINING')
+        trained_model = agent.train_model(model=model, total_timesteps=config['timesteps'])
 
     # Save the model
     trained_model.save(f"{model_path}/{model_name}.zip")
     print(f"Model saved to {model_path}")
 
 def test(config, model_path, data_path, model_name, log_path,
-         algo='sac', features=['close', 'high', 'low'], device='cpu'):
+         data_df=None, algo='sac', features=['close', 'high', 'low'], device='cpu'):
     if algo == "ppo":
         from stable_baselines3 import PPO as model_class
     elif algo == "sac":
@@ -160,8 +169,14 @@ def test(config, model_path, data_path, model_name, log_path,
         raise ValueError(f"Unsupported algorithm: {algo}")
     
     trained_model = load_model(algo, os.path.join(model_path, model_name + ".zip"), sb_env=None, model_params={'device': device})
-    raw_df = pd.read_csv(data_path)
-    raw_df = raw_df[["date", "tic", "close", "high", "low", "volume"]].drop_duplicates()
+    if data_path is not None:
+        assert data_df is None, "data_df must not be provided if data_path is not None"
+        raw_df = pd.read_csv(data_path)
+        raw_df = raw_df[["date", "tic", "close", "high", "low", "volume"]].drop_duplicates()
+    else:
+        assert data_df is not None, "data_df must be provided if data_path is None"
+        raw_df = data_df.copy()
+        raw_df = raw_df[["date", "tic", "close", "high", "low", "volume"]].drop_duplicates()
 
     print('PROCESSING DATA')
     df = preprocess(raw_df, config['test_start_date'], config['test_end_date'])
