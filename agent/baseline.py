@@ -160,7 +160,8 @@ def train(config, model_path, data_path, model_name, log_path=None,
     print(f"Model saved to {model_path}")
 
 def test(config, model_path, data_path, model_name, log_path,
-         data_df=None, algo='sac', features=['close', 'high', 'low'], device='cpu'):
+         data_df=None, algo='sac', features=['close', 'high', 'low'], device='cpu',
+         save_weights=True, save_test=True, save_account_value=True):
     if algo == "ppo":
         from stable_baselines3 import PPO as model_class
     elif algo == "sac":
@@ -193,7 +194,8 @@ def test(config, model_path, data_path, model_name, log_path,
         time_window=50,
         reward_scaling=float(config['reward_scaling']),
         features=features) # ,'close_30_sma', 'close_60_sma', 'volume'
-    result = backtesting(environment, trained_model, log_path)
+    result = backtesting(environment, trained_model, log_path, save_account_value=save_account_value,
+                        save_weights=save_weights, save_test=save_test)
     if 'backtest' in result:
         result['backtest'].to_csv(os.path.join(log_path, 'backtest', f'backtest_{model_name}.csv'))
         print('Backtest results saved to:', os.path.join(log_path, 'backtest', f'backtest_{model_name}.csv'))
@@ -203,6 +205,7 @@ def test(config, model_path, data_path, model_name, log_path,
     if 'account_value' in result:
         result['account_value'].to_csv(os.path.join(log_path, 'account_values', f'account_values_{model_name}.csv'), index=False)
         print('Account value saved to:', os.path.join(log_path, 'account_values', f'account_values_{model_name}.csv'))
+    return result
     
 
 if __name__ == "__main__":
