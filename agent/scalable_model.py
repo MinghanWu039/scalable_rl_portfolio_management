@@ -11,7 +11,7 @@ from . import baseline
 
 
 class Scalable():
-    def __init__(self, config, dir=None, device='cpu', algo='sac', ):
+    def __init__(self, config, dir=None, device='cpu', algo='sac'):
         self.dir = dir
         self.device=device
         self.algo = algo
