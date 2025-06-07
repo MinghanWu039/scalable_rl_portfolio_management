@@ -137,7 +137,7 @@ class Scalable():
             self, tics, start_date, end_date, 
             market_tic="S&P 500", rf_tic="^IRX",
             avg_sub_model_size=30, allow_size_diff=5,
-            n_PCA_components=2, random_state=42, config = None
+            n_PCA_components=2, random_state=42
         ):
         self.tics = tics
 
@@ -154,7 +154,10 @@ class Scalable():
 
         manager_data = self.construct_manager_df(self, start_date, end_date)
 
-        #TODO train manager
+        total_path = file_path(self.dir/'model', tics, start_date, end_date, suffix='zip', type='w')
+        model_dir, model_file = os.path.split(total_path)
+        model_name, _ = os.path.splitext(model_file)
+        self.manager_model = baseline.train(self.config, model_dir, None, model_name, log_path=self.dir, data_df=manager_data, algo=self.algo, device=self.device)
         return self.manager_model
         
     def test(self, start_date, end_date):
