@@ -158,6 +158,7 @@ def train(config, model_path, data_path, model_name, log_path=None,
     # Save the model
     trained_model.save(f"{model_path}/{model_name}.zip")
     print(f"Model saved to {model_path}")
+    return trained_model
 
 def test(config, model_path, data_path, model_name, log_path,
          data_df=None, algo='sac', features=['close', 'high', 'low'], device='cpu',
