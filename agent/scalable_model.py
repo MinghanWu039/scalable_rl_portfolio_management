@@ -48,6 +48,7 @@ class Scalable():
         rf_df = get_rf_rate(start_date, end_date, rf_tic, dir = "data" if self.dir is None else f'{self.dir}/data')
 
         if self.data is None or self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(tics))].empty:
+            print('No data available for the specified date range and tics. Fetching data...')
             self.data = get_data(tics, start_date, end_date, dir = "data" if self.dir is None else f'{self.dir}/data')
 
         X = construct_stock_features(self.data, market_df, rf_df)
@@ -68,7 +69,8 @@ class Scalable():
         total_path = file_path(model_dir, tics, start_date, end_date, suffix='zip', type='w')
         model_dir, model_file = os.path.split(total_path)
         model_name, _ = os.path.splitext(model_file)
-        baseline.train(config, model_dir, None, model_name, log_path=None, data_df=sub_data, algo=self.algo, device=self.device)
+
+        return baseline.train(config, model_dir, None, model_name, log_path=None, data_df=sub_data, algo=self.algo, device=self.device)
 
     def test_sub(self, tics, start_date, end_date, backtest=True, wights=False, valuse=False):
         results = {}
@@ -161,6 +163,7 @@ class Scalable():
         assert self.manager_model is not None, "Manager model not trained yet."
 
         if self.data is None or self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(self.tics))].empty:
+            print('No data available for the specified date range and tics. Fetching data...')
             self.data = get_data(self.tics, start_date, end_date)
 
         manager_data = self.construct_manager_df(self, start_date, end_date)
