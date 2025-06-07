@@ -1,5 +1,3 @@
-from finrl.config_tickers import NAS_100_TICKER, DOW_30_TICKER
-
 #2025/5/4
 tics_grouped = [['ALNY',
   'AMD',
