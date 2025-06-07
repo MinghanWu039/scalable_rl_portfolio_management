@@ -119,7 +119,7 @@ def compute_sub_df(
 import plotly.graph_objects as go
 import plotly.express as px
 
-def plot_account_value_comparison_plotly(
+def plot_account_value_comparison(
     models = None,
     model_labels = None,
     baseline = None,
