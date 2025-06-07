@@ -197,7 +197,7 @@ class PortfolioOptimizationEnv(gym.Env):
         self._portfolio_value = self._initial_amount
         self._terminal = False
 
-    def step(self, actions):
+    def step(self, actions, callback=True):
         """Performs a simulation step.
 
         Args:
@@ -255,22 +255,22 @@ class PortfolioOptimizationEnv(gym.Env):
             # plt.ylabel("Weight")
             # plt.savefig(self._results_file / "actions.png")
             # plt.close()
-
-            print("=================================")
-            print("Initial portfolio value:{}".format(self._asset_memory["final"][0]))
-            print(f"Final portfolio value: {self._portfolio_value}")
-            print(
-                "Final accumulative portfolio value: {}".format(
-                    self._portfolio_value / self._asset_memory["final"][0]
+            if callback:
+                print("=================================")
+                print("Initial portfolio value:{}".format(self._asset_memory["final"][0]))
+                print(f"Final portfolio value: {self._portfolio_value}")
+                print(
+                    "Final accumulative portfolio value: {}".format(
+                        self._portfolio_value / self._asset_memory["final"][0]
+                    )
                 )
-            )
-            print(
-                "Maximum DrawDown: {}".format(
-                    qs.stats.max_drawdown(metrics_df["portfolio_values"])
+                print(
+                    "Maximum DrawDown: {}".format(
+                        qs.stats.max_drawdown(metrics_df["portfolio_values"])
+                    )
                 )
-            )
-            print("Sharpe ratio: {}".format(qs.stats.sharpe(metrics_df["returns"])))
-            print("=================================")
+                print("Sharpe ratio: {}".format(qs.stats.sharpe(metrics_df["returns"])))
+                print("=================================")
 
             # qs.plots.snapshot(
             #     metrics_df["returns"],
