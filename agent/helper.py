@@ -151,8 +151,6 @@ def plot_account_value_comparison_plotly(
     title : str, optional
         图表标题，默认为 "Normalized Return Comparison"。
     """
-
-
     fig = go.Figure()
 
     if models is not None:

@@ -7,9 +7,10 @@ from .split import construct_stock_features, cluster_tic
 from .helper import short_name_sha256, tics_group_name, file_path, compute_sub_df
 
 class Scalable():
-    def __init__(self, super_env, sub_env):
+    def __init__(self, super_env, sub_env, dir=None):
         self.super_env = super_env
         self.sub_env = sub_env
+        self.dir = dir
 
         self.tics = None
         self.tics_lst = None
@@ -39,11 +40,11 @@ class Scalable():
             n_PCA_components, random_state
         ):
 
-        market_df =  get_market_df(start_date, end_date, market_tic)
-        rf_df = get_rf_rate(start_date, end_date, rf_tic)
+        market_df =  get_market_df(start_date, end_date, market_tic, dir = "data" if dir is None else f'{dir}/data')
+        rf_df = get_rf_rate(start_date, end_date, rf_tic, dir = "data" if dir is None else f'{dir}/data')
 
         if self.data is None or self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(tics))].empty:
-            self.data = get_data(tics, start_date, end_date)
+            self.data = get_data(tics, start_date, end_date, dir = "data" if dir is None else f'{dir}/data')
 
         X = construct_stock_features(self.data, market_df, rf_df)
 
@@ -96,7 +97,7 @@ class Scalable():
         if self.sub_models is None or len(self.sub_models) != len(self.tics_lst):
             if not self.load_sub(
                 self.tics_lst, 
-                model_dir="models", 
+                model_dir="models" if dir is None else f'{dir}/models', 
                 train_start_date=start_date, 
                 train_end_date=end_date
             ):
