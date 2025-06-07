@@ -43,11 +43,11 @@ class Scalable():
             n_PCA_components=2, random_state=42
         ):
 
-        market_df =  get_market_df(start_date, end_date, market_tic, dir = "data" if dir is None else f'{dir}/data')
-        rf_df = get_rf_rate(start_date, end_date, rf_tic, dir = "data" if dir is None else f'{dir}/data')
+        market_df =  get_market_df(start_date, end_date, market_tic, dir = "data" if self.dir is None else f'{self.dir}/data')
+        rf_df = get_rf_rate(start_date, end_date, rf_tic, dir = "data" if self.dir is None else f'{self.dir}/data')
 
         if self.data is None or self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(tics))].empty:
-            self.data = get_data(tics, start_date, end_date, dir = "data" if dir is None else f'{dir}/data')
+            self.data = get_data(tics, start_date, end_date, dir = "data" if self.dir is None else f'{self.dir}/data')
 
         X = construct_stock_features(self.data, market_df, rf_df)
 
