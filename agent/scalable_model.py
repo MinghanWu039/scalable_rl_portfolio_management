@@ -156,10 +156,13 @@ class Scalable():
 
         manager_data = self.construct_manager_df(self, start_date, end_date)
 
-        total_path = file_path(self.dir/'model', tics, start_date, end_date, suffix='zip', type='w')
+        tics_hashed = [tics_group_name(sub_tics) for sub_tics in self.tics_lst]
+
+        total_path = file_path(self.dir/'model', tics_hashed, start_date, end_date, suffix='zip', type='w')
         model_dir, model_file = os.path.split(total_path)
         model_name, _ = os.path.splitext(model_file)
         self.manager_model = baseline.train(self.config, model_dir, None, model_name, log_path=self.dir, data_df=manager_data, algo=self.algo, device=self.device)
+        
         return self.manager_model
         
     def test(self, start_date, end_date):
