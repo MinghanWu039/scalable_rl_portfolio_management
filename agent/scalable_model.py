@@ -26,12 +26,12 @@ class Scalable():
     def load_grouped_tics(self, tics_lst):
         self.tics_lst = tics_lst
 
-    def load_sub(self, tics, model_dir, train_start_date, train_end_date):
+    def load_sub(self, algo, tics, model_dir, train_start_date, train_end_date):
         model_path = file_path(model_dir, tics, train_start_date, train_end_date, suffix='zip', type='r')
         if not model_path.is_file():
             self.train_sub()
 
-        # return baseline.load_model() TODO
+        return baseline.load_model(algo, model_path)
 
     def split(
             self, tics, start_date, end_date, 
