@@ -54,6 +54,8 @@ class Scalable():
             model_path = Path(model_path) / f"{short_name_sha256('_'.join(sub_tics))}_{train_start_date}_{train_end_date}.zip"
             self.sub_models.append(model_class.load(model_path))
 
+    def get_data():
+
 
     def train(
             self, tics, start_date, end_date, 
@@ -62,7 +64,7 @@ class Scalable():
             n_PCA_components=2, random_state=42
         ):
 
-        
+
         self.split(
             tics, start_date, end_date, 
             market_tic, rf_tic,
