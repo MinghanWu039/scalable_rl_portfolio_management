@@ -57,21 +57,30 @@ class Scalable():
         )
 
 
-    def train_sub(self, algo, tics, start_date, end_date, config, model_dir):
+    def train_sub(self, tics, start_date, end_date, config, model_dir):
         sub_data = self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(tics))]
         if sub_data.empty:
             print('No data available for the specified date range and tics. Fetching data...')
             self.data = get_data(self.tics, start_date, end_date)
             sub_data = self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(tics))]
         
+        total_path = file_path(model_dir, tics, start_date, end_date, suffix='zip', type='w')
+        model_dir, model_file = os.path.split(total_path)
+        model_name, _ = os.path.splitext(model_file)
+        baseline.train(config, model_dir, None, model_name, log_path=None, data_df=sub_data, algo=self.algo, device=self.device)
+
+    def test_sub(self, tics, start_date, end_date, model_dir):
+        sub_data = self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(tics))]
+        if sub_data.empty:
+            print('No data available for the specified date range and tics. Fetching data...')
+            self.data = get_data(self.tics, start_date, end_date)
+            sub_data = self.data[(self.data['date'] >= start_date) & (self.data['date'] <= end_date) & (self.data['tic'].isin(tics))]
         total_path = file_path(model_dir, tics, start_date, end_date, suffix='zip', type='r')
         model_dir, model_file = os.path.split(total_path)
         model_name, _ = os.path.splitext(model_file)
-        baseline.train(config, model_dir, None, model_name, log_path=None, algo=self.algo, device=self.device)
-
-    def test_sub(self, start_date, end_date, tics_list=None):
-        #TODO
-        pass
+        log_path = file_path(model_dir, tics, start_date, end_date, suffix='csv', type='w')
+        log_path, _ = os.path.split(log_path)
+        baseline.test(self.config, model_dir, None, model_name, log_path, data_df=sub_data, algo=self.algo, device=self.device)
 
     def construct_manager_df(self, start_date, end_date):
         sub_data = []

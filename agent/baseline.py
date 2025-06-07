@@ -63,7 +63,7 @@ def preprocess(df, start_date, end_date):
     processed_full = processed_full.fillna(0)
     return processed_full
 
-def backtesting(env_test, model, log_path, save_weights=True, save_test=True):
+def backtesting(env_test, model, log_path, save_weights=True, save_test=True, save_account_value=True):
     print("=" * 10 + "Get Backtest Stats" + "=" * 10)
     now = datetime.now().strftime('%Y%m%d-%Hh%M')
     # Get model states
@@ -80,7 +80,6 @@ def backtesting(env_test, model, log_path, save_weights=True, save_test=True):
         account_value.append(env_test.get_portfolio_value())
         dates.append(env_test.get_date())
     df_account_value = pd.DataFrame({'account_value': account_value, 'date': dates})
-    # df_account_value.to_csv(f'account_values/' + short_name_sha256('_'.join(tics)) + total_date_range + ".csv")
 
     print('Model Backtest Stats')
     model_stats = backtest_stats(account_value=df_account_value)
@@ -94,12 +93,19 @@ def backtesting(env_test, model, log_path, save_weights=True, save_test=True):
     print('Baseline Backtest Stats')
     baseline_stats = backtest_stats(baseline_df, value_col_name = 'close')
     baseline_stats = pd.DataFrame(baseline_stats)
-
+    
+    output = {}
     if save_test:
         merged = model_stats.merge(baseline_stats, left_index=True, right_index=True, suffixes=('_model', '_baseline'))
-        merged.to_csv(os.path.join(log_path, 'backtest', f'backtest_stats_{now}.csv'))
+        output['backtest'] = merged
+        # merged.to_csv(os.path.join(log_path, 'backtest', f'backtest_stats_{now}.csv'))
     if save_weights:
-        pd.DataFrame({'dates': dates, 'weights': weight_history}).to_csv(os.path.join(log_path, 'weights', f'weights_{now}.csv'), index=False)
+        # pd.DataFrame({'dates': dates, 'weights': weight_history}).to_csv(os.path.join(log_path, 'weights', f'weights_{now}.csv'), index=False)
+        output['weights'] = pd.DataFrame({'date': dates, 'weights': weight_history})
+    if save_account_value:
+        # df_account_value.to_csv(os.path.join(log_path, 'account_values', f'account_values_{now}.csv'), index=False)
+        output['account_value'] = df_account_value
+    return output
 
 def train(config, model_path, data_path, model_name, log_path=None,
           data_df=None, algo='sac', retrain=False, features=['close', 'high', 'low'], device='cpu'):
@@ -187,7 +193,16 @@ def test(config, model_path, data_path, model_name, log_path,
         time_window=50,
         reward_scaling=float(config['reward_scaling']),
         features=features) # ,'close_30_sma', 'close_60_sma', 'volume'
-    backtesting(environment, trained_model, log_path)
+    result = backtesting(environment, trained_model, log_path)
+    if 'backtest' in result:
+        result['backtest'].to_csv(os.path.join(log_path, 'backtest', f'backtest_{model_name}.csv'))
+        print('Backtest results saved to:', os.path.join(log_path, 'backtest', f'backtest_{model_name}.csv'))
+    if 'weights' in result:
+        result['weights'].to_csv(os.path.join(log_path, 'weights', f'weights_{model_name}.csv'), index=False)
+        print('Weights saved to:', os.path.join(log_path, 'weights', f'weights_{model_name}.csv'))
+    if 'account_value' in result:
+        result['account_value'].to_csv(os.path.join(log_path, 'account_values', f'account_values_{model_name}.csv'), index=False)
+        print('Account value saved to:', os.path.join(log_path, 'account_values', f'account_values_{model_name}.csv'))
     
 
 if __name__ == "__main__":
