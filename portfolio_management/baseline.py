@@ -12,16 +12,11 @@ import importlib
 from stable_baselines3.common.logger import configure
 from stable_baselines3.common.callbacks import CheckpointCallback, BaseCallback
 
-# sys.path.append("/home/riling/scalable_rl_portfolio_management/FinRL-dev")
-import finrl.meta.env_portfolio_optimization.env_portfolio_optimization
-importlib.reload(finrl.meta.env_portfolio_optimization.env_portfolio_optimization)
-# import finrl.agents.stablebaselines3.models
-# importlib.reload(finrl.agents.stablebaselines3.models)
+sys.path.append("/home/miw039/scalable_rl_portfolio_management/FinRL-dev")
 
-# from finrl.meta.preprocessor.yahoodownloader import YahooDownloader
 from finrl.meta.env_portfolio_optimization.env_portfolio_optimization import PortfolioOptimizationEnv
 from finrl.meta.preprocessor.preprocessors import FeatureEngineer, data_split
-from agent import DRLAgent
+from finrl.agents.stablebaselines3.models import DRLAgent
 
 from finrl.plot import backtest_stats, backtest_plot, get_daily_return, get_baseline
 
@@ -67,7 +62,7 @@ def preprocess(df, start_date, end_date):
     return processed_full
 
 def backtesting(env_test, model):
-    print("==============Get Backtest Stats===========")
+    print("=" * 10 + "Get Backtest Stats" + "=" * 10)
     now = datetime.now().strftime('%Y%m%d-%Hh%M')
     # Get model states
     account_value = []
@@ -83,7 +78,6 @@ def backtesting(env_test, model):
         account_value.append(env_test.get_portfolio_value())
         dates.append(env_test.get_date())
     df_account_value = pd.DataFrame({'account_value': account_value, 'date': dates})
-    # df_account_value.to_csv(f'account_values/account_value_{now}.csv')
     # df_account_value.to_csv(f'account_values/' + short_name_sha256('_'.join(tics)) + total_date_range + ".csv")
 
     print('Model Backtest Stats')
@@ -100,10 +94,8 @@ def backtesting(env_test, model):
     baseline_stats = pd.DataFrame(baseline_stats)
 
     merged = model_stats.merge(baseline_stats, left_index=True, right_index=True, suffixes=('_model', '_baseline'))
-    merged.to_csv(f'backtests/backtest_{now}.csv')
-    # pd.DataFrame({'dates': dates, 'weights': weight_history}).to_csv(f'backtests/weights_{now}.csv')
+    merged.to_csv(f'backtests/final/backtest_{short_name_sha256("_".join(tics))}_{now}.csv')
     # pd.DataFrame({'dates': dates, 'weights': weight_history}).to_csv(f'weights/' + short_name_sha256('_'.join(tics)) + total_date_range + ".csv")
-    print(f'backtesting stats saved to backtest_{now}.csv')
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='FinRL Baseline')
@@ -125,12 +117,12 @@ if __name__ == "__main__":
     # tics = config_tickers.DOW_30_TICKER
     # tics = tics_176
     # tics = tics_grouped[5]
-    
     tics = []
     for group in tics_grouped:
         tics.append(short_name_sha256('_'.join(group)))
 
-    total_date_range = f"_{config['train_start_date']}_{config['test_end_date']}"
+    # total_date_range = f"_{config['train_start_date']}_{config['test_end_date']}"
+    total_date_range = "_2009-01-01_2024-10-01"
 
     if args.test:
         if args.algo == "ppo":
@@ -184,7 +176,7 @@ if __name__ == "__main__":
             if args.sha256:
                 raw_df = pd.read_csv(os.path.join(data_path, short_name_sha256('_'.join(tics)) + total_date_range + ".csv"))
             else:
-                raw_df = pd.read_csv(data_path)
+                raise ValueError("Data path must be provided for training")
             
         raw_df = raw_df[["date", "tic", "close", "high", "low", "volume"]]
 
