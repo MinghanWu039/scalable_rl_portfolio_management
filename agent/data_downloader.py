@@ -2,7 +2,7 @@ from finrl.meta.preprocessor.yahoodownloader import YahooDownloader # TODO
 from pathlib import Path
 import pandas as pd
 
-from helper import file_path
+from .helper import file_path
 
 market_tics = {
     "S&P 500": "^GSPC",
